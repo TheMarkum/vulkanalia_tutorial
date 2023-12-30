@@ -1,0 +1,15 @@
+[package]
+name = "vulkanalia-tutorial"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.77"
+cgmath = "0.18.0"
+log = "0.4.20"
+png = "0.17.10"
+pretty_env_logger = "0.5.0"
+thiserror = "1.0.52"
+tobj = { version =  "4.0.0", features = ["log"]  }
+vulkanalia = { version = "=0.22.0", features = ["libloading", "provisional", "window"] }
+winit = "0.28"
