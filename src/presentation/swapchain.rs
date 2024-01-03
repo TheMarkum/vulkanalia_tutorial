@@ -126,7 +126,7 @@ pub unsafe fn create_swapchain(
     data.swapchain = device.create_swapchain_khr(&info, None)?;
     data.swapchain_images = device.get_swapchain_images_khr(data.swapchain)?;
 
-    if size_of_val(&data.swapchain) > 0 || size_of_val(&data.swapchain_images) > 0 {
+    if size_of_val(&data.swapchain) > 0 && size_of_val(&data.swapchain_images) > 0 {
         info!("Swapchain created.");
         return Ok(());
     }

@@ -18,6 +18,7 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
+mod pipeline;
 mod presentation;
 mod setup;
 
@@ -84,8 +85,12 @@ impl App {
 
         setup::device::pick_physical_device(&instance, &mut data)?;
         let device = setup::device::create_logical_device(&entry, &instance, &mut data)?;
+
         presentation::swapchain::create_swapchain(window, &instance, &device, &mut data)?;
         presentation::swapchain::create_swapchain_image_views(&device, &mut data)?;
+
+        pipeline::pipeline::create_render_pass(&instance, &device, &mut data)?;
+        pipeline::pipeline::create_pipeline(&device, &mut data)?;
 
         Ok(Self {
             entry,
@@ -102,6 +107,13 @@ impl App {
 
     /// Destroys our Vulkan app.
     unsafe fn destroy(&mut self) {
+        self.device.destroy_pipeline(self.data.pipeline, None);
+
+        self.device
+            .destroy_pipeline_layout(self.data.pipeline_layout, None);
+
+        self.device.destroy_render_pass(self.data.render_pass, None);
+
         self.data
             .swapchain_image_views
             .iter()
@@ -134,4 +146,7 @@ struct AppData {
     swapchain: vk::SwapchainKHR,
     swapchain_images: Vec<vk::Image>,
     swapchain_image_views: Vec<vk::ImageView>,
+    render_pass: vk::RenderPass,
+    pipeline_layout: vk::PipelineLayout,
+    pipeline: vk::Pipeline,
 }
