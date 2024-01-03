@@ -5,8 +5,6 @@ use log::*;
 use vulkanalia::bytecode::Bytecode;
 use vulkanalia::prelude::v1_0::*;
 
-// use vulkanalia::vk::ShaderModule;
-
 use crate::AppData;
 
 pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()> {
@@ -153,6 +151,14 @@ pub unsafe fn create_render_pass(
         .subpasses(subpasses);
 
     data.render_pass = device.create_render_pass(&info, None)?;
+
+    let dependency = vk::SubpassDependency::builder()
+        .src_subpass(vk::SUBPASS_EXTERNAL)
+        .dst_subpass(0)
+        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .src_access_mask(vk::AccessFlags::empty())
+        .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE);
 
     if size_of_val(&data.render_pass) > 0 {
         info!("Render pass created.");
