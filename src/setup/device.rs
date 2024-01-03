@@ -6,7 +6,7 @@ use thiserror::Error;
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::Instance;
 
-use crate::presentation::swapchain::{DEVICE_EXTENSIONS, SwapchainSupport};
+use crate::presentation::swapchain::{SwapchainSupport, DEVICE_EXTENSIONS};
 use crate::{AppData, VALIDATION_ENABLED, VALIDATION_LAYER};
 
 pub mod queue_families;
@@ -26,7 +26,7 @@ pub unsafe fn pick_physical_device(instance: &Instance, data: &mut AppData) -> R
             );
         } else {
             info!("Selected physical device (`{}`).", properties.device_name);
-            data.physical_device = physical_device;
+            data.setup_data.physical_device = physical_device;
             return Ok(());
         }
     }
@@ -79,7 +79,8 @@ pub unsafe fn create_logical_device(
     instance: &Instance,
     data: &mut AppData,
 ) -> Result<Device> {
-    let indices = queue_families::QueueFamilyIndices::get(instance, data, data.physical_device)?;
+    let indices =
+        queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
 
     let mut unique_indices = HashSet::new();
     unique_indices.insert(indices.graphics);
@@ -114,10 +115,10 @@ pub unsafe fn create_logical_device(
         .enabled_extension_names(&extensions)
         .enabled_features(&features);
 
-    let device = instance.create_device(data.physical_device, &info, None)?;
+    let device = instance.create_device(data.setup_data.physical_device, &info, None)?;
 
-    data.graphics_queue = device.get_device_queue(indices.graphics, 0);
-    data.present_queue = device.get_device_queue(indices.present, 0);
+    data.setup_data.graphics_queue = device.get_device_queue(indices.graphics, 0);
+    data.setup_data.present_queue = device.get_device_queue(indices.present, 0);
 
     Ok(device)
 }

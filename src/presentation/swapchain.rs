@@ -81,15 +81,16 @@ pub unsafe fn create_swapchain(
     device: &Device,
     data: &mut AppData,
 ) -> Result<()> {
-    let indices = queue_families::QueueFamilyIndices::get(instance, data, data.physical_device)?;
-    let support = SwapchainSupport::get(instance, data, data.physical_device)?;
+    let indices =
+        queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
+    let support = SwapchainSupport::get(instance, data, data.setup_data.physical_device)?;
 
     let surface_format = get_swapchain_surface_format(&support.formats);
     let present_mode = get_swapchain_present_mode(&support.present_modes);
     let extent = get_swapchain_extent(window, support.capabilities);
 
-    data.swapchain_format = surface_format.format;
-    data.swapchain_extent = extent;
+    data.presentation_data.swapchain_format = surface_format.format;
+    data.presentation_data.swapchain_extent = extent;
 
     let mut image_count = support.capabilities.min_image_count + 1;
     if support.capabilities.max_image_count != 0
@@ -123,10 +124,13 @@ pub unsafe fn create_swapchain(
         .clipped(true)
         .old_swapchain(vk::SwapchainKHR::null());
 
-    data.swapchain = device.create_swapchain_khr(&info, None)?;
-    data.swapchain_images = device.get_swapchain_images_khr(data.swapchain)?;
+    data.presentation_data.swapchain = device.create_swapchain_khr(&info, None)?;
+    data.presentation_data.swapchain_images =
+        device.get_swapchain_images_khr(data.presentation_data.swapchain)?;
 
-    if size_of_val(&data.swapchain) > 0 && size_of_val(&data.swapchain_images) > 0 {
+    if size_of_val(&data.presentation_data.swapchain) > 0
+        && size_of_val(&data.presentation_data.swapchain_images) > 0
+    {
         info!("Swapchain created.");
         return Ok(());
     }
@@ -135,7 +139,8 @@ pub unsafe fn create_swapchain(
 }
 
 pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) -> Result<()> {
-    data.swapchain_image_views = data
+    data.presentation_data.swapchain_image_views = data
+        .presentation_data
         .swapchain_images
         .iter()
         .map(|i| {
@@ -155,7 +160,7 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
             let info = vk::ImageViewCreateInfo::builder()
                 .image(*i)
                 .view_type(vk::ImageViewType::_2D)
-                .format(data.swapchain_format)
+                .format(data.presentation_data.swapchain_format)
                 .components(components)
                 .subresource_range(subresource_range);
 

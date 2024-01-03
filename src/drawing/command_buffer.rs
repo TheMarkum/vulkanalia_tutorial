@@ -9,26 +9,27 @@ pub unsafe fn create_command_pool(
     device: &Device,
     data: &mut AppData,
 ) -> Result<()> {
-    let indices = queue_families::QueueFamilyIndices::get(instance, data, data.physical_device)?;
+    let indices =
+        queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
 
     let info = vk::CommandPoolCreateInfo::builder()
         .flags(vk::CommandPoolCreateFlags::empty()) // Optional.
         .queue_family_index(indices.graphics);
 
-    data.command_pool = device.create_command_pool(&info, None)?;
+    data.drawing_data.command_pool = device.create_command_pool(&info, None)?;
 
     Ok(())
 }
 
 pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()> {
     let allocate_info = vk::CommandBufferAllocateInfo::builder()
-        .command_pool(data.command_pool)
+        .command_pool(data.drawing_data.command_pool)
         .level(vk::CommandBufferLevel::PRIMARY)
-        .command_buffer_count(data.framebuffers.len() as u32);
+        .command_buffer_count(data.drawing_data.framebuffers.len() as u32);
 
-    data.command_buffers = device.allocate_command_buffers(&allocate_info)?;
+    data.drawing_data.command_buffers = device.allocate_command_buffers(&allocate_info)?;
 
-    for (i, command_buffer) in data.command_buffers.iter().enumerate() {
+    for (i, command_buffer) in data.drawing_data.command_buffers.iter().enumerate() {
         let inheritance = vk::CommandBufferInheritanceInfo::builder();
 
         let info = vk::CommandBufferBeginInfo::builder()
@@ -39,7 +40,7 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
 
         let render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
-            .extent(data.swapchain_extent);
+            .extent(data.presentation_data.swapchain_extent);
 
         let color_clear_value = vk::ClearValue {
             color: vk::ClearColorValue {
@@ -49,8 +50,8 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
 
         let clear_values = &[color_clear_value];
         let info = vk::RenderPassBeginInfo::builder()
-            .render_pass(data.render_pass)
-            .framebuffer(data.framebuffers[i])
+            .render_pass(data.pipeline_data.render_pass)
+            .framebuffer(data.drawing_data.framebuffers[i])
             .render_area(render_area)
             .clear_values(clear_values);
 
@@ -59,7 +60,7 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
         device.cmd_bind_pipeline(
             *command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
-            data.pipeline,
+            data.pipeline_data.pipeline,
         );
 
         device.cmd_draw(*command_buffer, 3, 1, 0, 0);

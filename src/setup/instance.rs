@@ -71,7 +71,7 @@ pub unsafe fn create_instance(
             .message_type(vk::DebugUtilsMessageTypeFlagsEXT::all())
             .user_callback(Some(debug::debug_callback));
 
-        data.messenger = instance.create_debug_utils_messenger_ext(&debug_info, None)?;
+        data.setup_data.messenger = instance.create_debug_utils_messenger_ext(&debug_info, None)?;
     }
 
     Ok(instance)

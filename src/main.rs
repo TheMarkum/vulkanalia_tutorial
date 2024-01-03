@@ -9,7 +9,7 @@ use anyhow::{anyhow, Result};
 use vulkanalia::loader::{LibloadingLoader, LIBRARY};
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{
-    DebugUtilsMessengerEXT, ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension,
+    ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension,
     KhrSwapchainExtension,
 };
 use vulkanalia::{window, Entry, Instance};
@@ -115,38 +115,42 @@ impl App {
 
     /// Renders a frame for our Vulkan app.
     unsafe fn render(&mut self, window: &Window) -> Result<()> {
-        self.device
-            .wait_for_fences(&[self.data.in_flight_fences[self.frame]], true, u64::MAX)?;
+        self.device.wait_for_fences(
+            &[self.data.drawing_data.in_flight_fences[self.frame]],
+            true,
+            u64::MAX,
+        )?;
 
         self.device
-            .reset_fences(&[self.data.in_flight_fences[self.frame]])?;
+            .reset_fences(&[self.data.drawing_data.in_flight_fences[self.frame]])?;
 
         let image_index = self
             .device
             .acquire_next_image_khr(
-                self.data.swapchain,
+                self.data.presentation_data.swapchain,
                 u64::MAX,
-                self.data.image_available_semaphores[self.frame],
+                self.data.drawing_data.image_available_semaphores[self.frame],
                 vk::Fence::null(),
             )?
             .0 as usize;
 
-        if !self.data.images_in_flight[image_index as usize].is_null() {
+        if !self.data.drawing_data.images_in_flight[image_index as usize].is_null() {
             self.device.wait_for_fences(
-                &[self.data.images_in_flight[image_index as usize]],
+                &[self.data.drawing_data.images_in_flight[image_index as usize]],
                 true,
                 u64::MAX,
             )?;
         }
 
-        self.data.images_in_flight[image_index as usize] = self.data.in_flight_fences[self.frame];
+        self.data.drawing_data.images_in_flight[image_index as usize] =
+            self.data.drawing_data.in_flight_fences[self.frame];
 
-        let wait_semaphores = &[self.data.image_available_semaphores[self.frame]];
+        let wait_semaphores = &[self.data.drawing_data.image_available_semaphores[self.frame]];
 
         let wait_stages = &[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
-        let command_buffers = &[self.data.command_buffers[image_index as usize]];
+        let command_buffers = &[self.data.drawing_data.command_buffers[image_index as usize]];
 
-        let signal_semaphores = &[self.data.render_finished_semaphores[self.frame]];
+        let signal_semaphores = &[self.data.drawing_data.render_finished_semaphores[self.frame]];
 
         let submit_info = vk::SubmitInfo::builder()
             .wait_semaphores(wait_semaphores)
@@ -155,15 +159,15 @@ impl App {
             .signal_semaphores(signal_semaphores);
 
         self.device
-            .reset_fences(&[self.data.in_flight_fences[self.frame]])?;
+            .reset_fences(&[self.data.drawing_data.in_flight_fences[self.frame]])?;
 
         self.device.queue_submit(
-            self.data.graphics_queue,
+            self.data.setup_data.graphics_queue,
             &[submit_info],
-            self.data.in_flight_fences[self.frame],
+            self.data.drawing_data.in_flight_fences[self.frame],
         )?;
 
-        let swapchains = &[self.data.swapchain];
+        let swapchains = &[self.data.presentation_data.swapchain];
         let image_indices = &[image_index as u32];
         let present_info = vk::PresentInfoKHR::builder()
             .wait_semaphores(signal_semaphores)
@@ -171,7 +175,7 @@ impl App {
             .image_indices(image_indices);
 
         self.device
-            .queue_present_khr(self.data.present_queue, &present_info)?;
+            .queue_present_khr(self.data.setup_data.present_queue, &present_info)?;
 
         self.frame = (self.frame + 1) % drawing::render::MAX_FRAMES_IN_FLIGHT;
 
@@ -181,46 +185,54 @@ impl App {
     /// Destroys our Vulkan app.
     unsafe fn destroy(&mut self) {
         self.data
+            .drawing_data
             .in_flight_fences
             .iter()
             .for_each(|f| self.device.destroy_fence(*f, None));
 
         self.data
+            .drawing_data
             .render_finished_semaphores
             .iter()
             .for_each(|s| self.device.destroy_semaphore(*s, None));
         self.data
+            .drawing_data
             .image_available_semaphores
             .iter()
             .for_each(|s| self.device.destroy_semaphore(*s, None));
 
         self.device
-            .destroy_command_pool(self.data.command_pool, None);
+            .destroy_command_pool(self.data.drawing_data.command_pool, None);
 
         self.data
+            .drawing_data
             .framebuffers
             .iter()
             .for_each(|f| self.device.destroy_framebuffer(*f, None));
 
-        self.device.destroy_pipeline(self.data.pipeline, None);
+        self.device
+            .destroy_pipeline(self.data.pipeline_data.pipeline, None);
 
         self.device
-            .destroy_pipeline_layout(self.data.pipeline_layout, None);
+            .destroy_pipeline_layout(self.data.pipeline_data.pipeline_layout, None);
 
-        self.device.destroy_render_pass(self.data.render_pass, None);
+        self.device
+            .destroy_render_pass(self.data.pipeline_data.render_pass, None);
 
         self.data
+            .presentation_data
             .swapchain_image_views
             .iter()
             .for_each(|v| self.device.destroy_image_view(*v, None));
 
-        self.device.destroy_swapchain_khr(self.data.swapchain, None);
+        self.device
+            .destroy_swapchain_khr(self.data.presentation_data.swapchain, None);
 
         self.device.destroy_device(None);
 
         if VALIDATION_ENABLED {
             self.instance
-                .destroy_debug_utils_messenger_ext(self.data.messenger, None);
+                .destroy_debug_utils_messenger_ext(self.data.setup_data.messenger, None);
         }
 
         self.instance.destroy_surface_khr(self.data.surface, None);
@@ -232,23 +244,8 @@ impl App {
 #[derive(Clone, Debug, Default)]
 struct AppData {
     surface: vk::SurfaceKHR,
-    messenger: DebugUtilsMessengerEXT,
-    physical_device: vk::PhysicalDevice,
-    graphics_queue: vk::Queue,
-    present_queue: vk::Queue,
-    swapchain_format: vk::Format,
-    swapchain_extent: vk::Extent2D,
-    swapchain: vk::SwapchainKHR,
-    swapchain_images: Vec<vk::Image>,
-    swapchain_image_views: Vec<vk::ImageView>,
-    render_pass: vk::RenderPass,
-    pipeline_layout: vk::PipelineLayout,
-    pipeline: vk::Pipeline,
-    framebuffers: Vec<vk::Framebuffer>,
-    command_pool: vk::CommandPool,
-    command_buffers: Vec<vk::CommandBuffer>,
-    image_available_semaphores: Vec<vk::Semaphore>,
-    render_finished_semaphores: Vec<vk::Semaphore>,
-    in_flight_fences: Vec<vk::Fence>,
-    images_in_flight: Vec<vk::Fence>,
+    setup_data: setup::SetupData,
+    presentation_data: presentation::PresentationData,
+    pipeline_data: pipeline::PipelineData,
+    drawing_data: drawing::DrawingData,
 }

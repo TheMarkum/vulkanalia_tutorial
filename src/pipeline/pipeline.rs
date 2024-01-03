@@ -33,14 +33,14 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
     let viewport = vk::Viewport::builder()
         .x(0.0)
         .y(0.0)
-        .width(data.swapchain_extent.width as f32)
-        .height(data.swapchain_extent.height as f32)
+        .width(data.presentation_data.swapchain_extent.width as f32)
+        .height(data.presentation_data.swapchain_extent.height as f32)
         .min_depth(0.0)
         .max_depth(1.0);
 
     let scissor = vk::Rect2D::builder()
         .offset(vk::Offset2D { x: 0, y: 0 })
-        .extent(data.swapchain_extent);
+        .extent(data.presentation_data.swapchain_extent);
 
     let viewports = &[viewport];
     let scissors = &[scissor];
@@ -80,7 +80,7 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
 
     let layout_info = vk::PipelineLayoutCreateInfo::builder();
 
-    data.pipeline_layout = device.create_pipeline_layout(&layout_info, None)?;
+    data.pipeline_data.pipeline_layout = device.create_pipeline_layout(&layout_info, None)?;
 
     let stages = &[vert_stage, frag_stage];
     let info = vk::GraphicsPipelineCreateInfo::builder()
@@ -91,18 +91,20 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
         .rasterization_state(&rasterization_state)
         .multisample_state(&multisample_state)
         .color_blend_state(&color_blend_state)
-        .layout(data.pipeline_layout)
-        .render_pass(data.render_pass)
+        .layout(data.pipeline_data.pipeline_layout)
+        .render_pass(data.pipeline_data.render_pass)
         .subpass(0);
 
-    data.pipeline = device
+    data.pipeline_data.pipeline = device
         .create_graphics_pipelines(vk::PipelineCache::null(), &[info], None)?
         .0[0];
 
     device.destroy_shader_module(vert_shader_module, None);
     device.destroy_shader_module(frag_shader_module, None);
 
-    if size_of_val(&data.pipeline) > 0 && size_of_val(&data.pipeline_layout) > 0 {
+    if size_of_val(&data.pipeline_data.pipeline) > 0
+        && size_of_val(&data.pipeline_data.pipeline_layout) > 0
+    {
         info!("Pipeline created.");
         return Ok(());
     }
@@ -126,7 +128,7 @@ pub unsafe fn create_render_pass(
     data: &mut AppData,
 ) -> Result<()> {
     let color_attachment = vk::AttachmentDescription::builder()
-        .format(data.swapchain_format)
+        .format(data.presentation_data.swapchain_format)
         .samples(vk::SampleCountFlags::_1)
         .load_op(vk::AttachmentLoadOp::CLEAR)
         .store_op(vk::AttachmentStoreOp::STORE)
@@ -160,9 +162,9 @@ pub unsafe fn create_render_pass(
         .subpasses(subpasses)
         .dependencies(dependencies);
 
-    data.render_pass = device.create_render_pass(&info, None)?;
+    data.pipeline_data.render_pass = device.create_render_pass(&info, None)?;
 
-    if size_of_val(&data.render_pass) > 0 {
+    if size_of_val(&data.pipeline_data.render_pass) > 0 {
         info!("Render pass created.");
         return Ok(());
     }
