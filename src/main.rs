@@ -10,6 +10,7 @@ use vulkanalia::loader::{LibloadingLoader, LIBRARY};
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{
     DebugUtilsMessengerEXT, ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension,
+    KhrSwapchainExtension,
 };
 use vulkanalia::{window, Entry, Instance};
 use winit::dpi::LogicalSize;
@@ -24,7 +25,6 @@ const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
 
 const VALIDATION_LAYER: vk::ExtensionName =
     vk::ExtensionName::from_bytes(b"VK_LAYER_KHRONOS_validation");
-
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -84,6 +84,8 @@ impl App {
 
         setup::device::pick_physical_device(&instance, &mut data)?;
         let device = setup::device::create_logical_device(&entry, &instance, &mut data)?;
+        presentation::swapchain::create_swapchain(window, &instance, &device, &mut data)?;
+        presentation::swapchain::create_swapchain_image_views(&device, &mut data)?;
 
         Ok(Self {
             entry,
@@ -100,6 +102,13 @@ impl App {
 
     /// Destroys our Vulkan app.
     unsafe fn destroy(&mut self) {
+        self.data
+            .swapchain_image_views
+            .iter()
+            .for_each(|v| self.device.destroy_image_view(*v, None));
+
+        self.device.destroy_swapchain_khr(self.data.swapchain, None);
+
         self.device.destroy_device(None);
 
         if VALIDATION_ENABLED {
@@ -120,4 +129,9 @@ struct AppData {
     physical_device: vk::PhysicalDevice,
     graphics_queue: vk::Queue,
     present_queue: vk::Queue,
+    swapchain_format: vk::Format,
+    swapchain_extent: vk::Extent2D,
+    swapchain: vk::SwapchainKHR,
+    swapchain_images: Vec<vk::Image>,
+    swapchain_image_views: Vec<vk::ImageView>,
 }

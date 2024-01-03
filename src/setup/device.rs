@@ -9,7 +9,7 @@ use vulkanalia::Instance;
 use crate::presentation::swapchain::{DEVICE_EXTENSIONS, SwapchainSupport};
 use crate::{AppData, VALIDATION_ENABLED, VALIDATION_LAYER};
 
-mod queue_families;
+pub mod queue_families;
 
 #[derive(Debug, Error)]
 #[error("Missing {0}.")]
