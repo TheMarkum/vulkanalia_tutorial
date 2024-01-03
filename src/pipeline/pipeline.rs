@@ -144,14 +144,6 @@ pub unsafe fn create_render_pass(
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
         .color_attachments(color_attachments);
 
-    let attachments = &[color_attachment];
-    let subpasses = &[subpass];
-    let info = vk::RenderPassCreateInfo::builder()
-        .attachments(attachments)
-        .subpasses(subpasses);
-
-    data.render_pass = device.create_render_pass(&info, None)?;
-
     let dependency = vk::SubpassDependency::builder()
         .src_subpass(vk::SUBPASS_EXTERNAL)
         .dst_subpass(0)
@@ -159,6 +151,16 @@ pub unsafe fn create_render_pass(
         .src_access_mask(vk::AccessFlags::empty())
         .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
         .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE);
+
+    let attachments = &[color_attachment];
+    let subpasses = &[subpass];
+    let dependencies = &[dependency];
+    let info = vk::RenderPassCreateInfo::builder()
+        .attachments(attachments)
+        .subpasses(subpasses)
+        .dependencies(dependencies);
+
+    data.render_pass = device.create_render_pass(&info, None)?;
 
     if size_of_val(&data.render_pass) > 0 {
         info!("Render pass created.");

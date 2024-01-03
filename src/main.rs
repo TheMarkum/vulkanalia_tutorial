@@ -56,9 +56,13 @@ fn main() -> Result<()> {
                 destroying = true;
                 *control_flow = ControlFlow::Exit;
                 unsafe {
+                    app.device.device_wait_idle().unwrap();
+                }
+                unsafe {
                     app.destroy();
                 }
             }
+
             _ => {}
         }
     });
@@ -141,6 +145,8 @@ impl App {
 
         self.device
             .queue_present_khr(self.data.present_queue, &present_info)?;
+
+        self.device.queue_wait_idle(self.data.present_queue)?;
 
         Ok(())
     }
