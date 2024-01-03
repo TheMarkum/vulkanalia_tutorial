@@ -8,20 +8,23 @@
 use anyhow::{anyhow, Result};
 use vulkanalia::loader::{LibloadingLoader, LIBRARY};
 use vulkanalia::prelude::v1_0::*;
-use vulkanalia::vk::{DebugUtilsMessengerEXT, ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension};
-use vulkanalia::{Entry, Instance, window};
+use vulkanalia::vk::{
+    DebugUtilsMessengerEXT, ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension,
+};
+use vulkanalia::{window, Entry, Instance};
 use winit::dpi::LogicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
-mod setup;
 mod presentation;
+mod setup;
 
 const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
 
 const VALIDATION_LAYER: vk::ExtensionName =
     vk::ExtensionName::from_bytes(b"VK_LAYER_KHRONOS_validation");
+
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -116,4 +119,5 @@ struct AppData {
     messenger: DebugUtilsMessengerEXT,
     physical_device: vk::PhysicalDevice,
     graphics_queue: vk::Queue,
+    present_queue: vk::Queue,
 }
