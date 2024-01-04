@@ -6,6 +6,7 @@
 )]
 
 use anyhow::{anyhow, Result};
+use log::*;
 use vulkanalia::loader::{LibloadingLoader, LIBRARY};
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{
@@ -42,11 +43,27 @@ fn main() -> Result<()> {
 
     let mut app = unsafe { App::create(&window)? };
     let mut destroying = false;
+    let mut minimized = false;
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         match event {
             // Render a frame if our Vulkan app is not being destroyed.
-            Event::MainEventsCleared if !destroying => unsafe { app.render(&window) }.unwrap(),
+            Event::MainEventsCleared if !destroying && !minimized => unsafe { app.render(&window) }.unwrap(),
+            // Trigger re-render, if resized.
+            Event::WindowEvent {
+                event: WindowEvent::Resized(size),
+                ..
+            } => {
+                if size.width == 0 || size.height == 0 {
+                    minimized = true;
+                } else {
+                    minimized = false;
+                    app.resized = true;
+                }
+
+                info!("Resized window.");
+            }
             // Destroy our Vulkan app.
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -61,7 +78,6 @@ fn main() -> Result<()> {
                     app.destroy();
                 }
             }
-
             _ => {}
         }
     });
@@ -75,6 +91,7 @@ struct App {
     data: AppData,
     device: Device,
     frame: usize,
+    resized: bool,
 }
 
 impl App {
@@ -109,6 +126,7 @@ impl App {
             data,
             device,
             frame: 0,
+            resized: false,
         })
     }
 
@@ -173,8 +191,19 @@ impl App {
             .swapchains(swapchains)
             .image_indices(image_indices);
 
-        self.device
-            .queue_present_khr(self.data.setup_data.present_queue, &present_info)?;
+        let result = self
+            .device
+            .queue_present_khr(self.data.setup_data.present_queue, &present_info);
+
+        let changed = result == Ok(vk::SuccessCode::SUBOPTIMAL_KHR)
+            || result == Err(vk::ErrorCode::OUT_OF_DATE_KHR);
+
+        if self.resized || changed {
+            self.resized = false;
+            presentation::swapchain::recreate_swapchain(self, window)?;
+        } else if let Err(e) = result {
+            return Err(anyhow!(e));
+        }
 
         self.frame = (self.frame + 1) % drawing::render::MAX_FRAMES_IN_FLIGHT;
 
@@ -183,6 +212,8 @@ impl App {
 
     /// Destroys our Vulkan app.
     unsafe fn destroy(&mut self) {
+        presentation::swapchain::destroy_swapchain(self);
+
         self.data
             .drawing_data
             .in_flight_fences
@@ -202,30 +233,6 @@ impl App {
 
         self.device
             .destroy_command_pool(self.data.drawing_data.command_pool, None);
-
-        self.data
-            .drawing_data
-            .framebuffers
-            .iter()
-            .for_each(|f| self.device.destroy_framebuffer(*f, None));
-
-        self.device
-            .destroy_pipeline(self.data.pipeline_data.pipeline, None);
-
-        self.device
-            .destroy_pipeline_layout(self.data.pipeline_data.pipeline_layout, None);
-
-        self.device
-            .destroy_render_pass(self.data.pipeline_data.render_pass, None);
-
-        self.data
-            .presentation_data
-            .swapchain_image_views
-            .iter()
-            .for_each(|v| self.device.destroy_image_view(*v, None));
-
-        self.device
-            .destroy_swapchain_khr(self.data.presentation_data.swapchain, None);
 
         self.device.destroy_device(None);
 

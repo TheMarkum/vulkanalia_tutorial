@@ -4,8 +4,10 @@ use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{KhrSurfaceExtension, KhrSwapchainExtension};
 use winit::window::Window;
 
+use crate::drawing::{command_buffer, frame_buffer};
+use crate::pipeline::pipeline;
 use crate::setup::device::queue_families;
-use crate::AppData;
+use crate::{App, AppData};
 
 pub const DEVICE_EXTENSIONS: &[vk::ExtensionName] = &[vk::KHR_SWAPCHAIN_EXTENSION.name];
 
@@ -162,4 +164,57 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(())
+}
+
+pub unsafe fn recreate_swapchain(app: &mut App, window: &Window) -> Result<()> {
+    app.device.device_wait_idle()?;
+    destroy_swapchain(app);
+
+    create_swapchain(window, &app.instance, &app.device, &mut app.data)?;
+    create_swapchain_image_views(&app.device, &mut app.data)?;
+
+    pipeline::create_render_pass(&app.instance, &app.device, &mut app.data)?;
+    pipeline::create_pipeline(&app.device, &mut app.data)?;
+
+    frame_buffer::create_framebuffers(&app.device, &mut app.data)?;
+    command_buffer::create_command_buffers(&app.device, &mut app.data)?;
+
+    app.data.drawing_data.images_in_flight.resize(
+        app.data.presentation_data.swapchain_images.len(),
+        vk::Fence::null(),
+    );
+
+    info!("Swapchain re-created.");
+    Ok(())
+}
+
+pub unsafe fn destroy_swapchain(app: &mut App) {
+    app.data
+        .drawing_data
+        .framebuffers
+        .iter()
+        .for_each(|f| app.device.destroy_framebuffer(*f, None));
+
+    app.device.free_command_buffers(
+        app.data.drawing_data.command_pool,
+        &app.data.drawing_data.command_buffers,
+    );
+
+    app.device
+        .destroy_pipeline(app.data.pipeline_data.pipeline, None);
+
+    app.device
+        .destroy_pipeline_layout(app.data.pipeline_data.pipeline_layout, None);
+
+    app.device
+        .destroy_render_pass(app.data.pipeline_data.render_pass, None);
+
+    app.data
+        .presentation_data
+        .swapchain_image_views
+        .iter()
+        .for_each(|v| app.device.destroy_image_view(*v, None));
+
+    app.device
+        .destroy_swapchain_khr(app.data.presentation_data.swapchain, None);
 }
