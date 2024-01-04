@@ -84,6 +84,7 @@ pub unsafe fn create_logical_device(
 
     let mut unique_indices = HashSet::new();
     unique_indices.insert(indices.transfer);
+    unique_indices.insert(indices.graphics);
     unique_indices.insert(indices.present);
 
     let queue_priorities = &[1.0];
@@ -118,6 +119,7 @@ pub unsafe fn create_logical_device(
     let device = instance.create_device(data.setup_data.physical_device, &info, None)?;
 
     data.setup_data.transfer_queue = device.get_device_queue(indices.transfer, 0);
+    data.setup_data.graphics_queue = device.get_device_queue(indices.graphics, 0);
     data.setup_data.present_queue = device.get_device_queue(indices.present, 0);
 
     Ok(device)

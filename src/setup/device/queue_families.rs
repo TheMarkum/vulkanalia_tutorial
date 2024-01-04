@@ -9,6 +9,7 @@ use crate::AppData;
 #[derive(Copy, Clone, Debug)]
 pub struct QueueFamilyIndices {
     pub transfer: u32,
+    pub graphics: u32,
     pub present: u32,
 }
 
@@ -25,6 +26,11 @@ impl QueueFamilyIndices {
             .position(|p| p.queue_flags.contains(vk::QueueFlags::TRANSFER))
             .map(|i| i as u32);
 
+        let graphics = properties
+            .iter()
+            .position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS))
+            .map(|i| i as u32);
+
         let mut present = None;
         for (index, properties) in properties.iter().enumerate() {
             if instance.get_physical_device_surface_support_khr(
@@ -37,8 +43,8 @@ impl QueueFamilyIndices {
             }
         }
 
-        if let (Some(transfer), Some(present)) = (transfer, present) {
-            Ok(Self { transfer, present })
+        if let (Some(transfer), Some(graphics), Some(present)) = (transfer, graphics, present) {
+            Ok(Self { transfer, graphics, present })
         } else {
             Err(anyhow!(SuitabilityError(
                 "Missing required queue families."

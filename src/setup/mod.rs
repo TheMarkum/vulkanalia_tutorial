@@ -9,5 +9,6 @@ pub struct SetupData {
     pub messenger: DebugUtilsMessengerEXT,
     pub physical_device: vk::PhysicalDevice,
     pub transfer_queue: vk::Queue,
+    pub graphics_queue: vk::Queue,
     pub present_queue: vk::Queue,
 }

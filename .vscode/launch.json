@@ -23,7 +23,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "DISPLAY": ":0",
-                "RUST_LOG": "info"
+                "RUST_LOG": "debug"
             }
         },
         {
