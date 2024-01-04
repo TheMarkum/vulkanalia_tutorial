@@ -121,6 +121,7 @@ impl App {
         drawing::command_buffer::create_command_pool(&instance, &device, &mut data)?;
 
         vertex::vertex::create_vertex_buffer(&instance, &device, &mut data)?;
+        vertex::vertex::create_index_buffer(&instance, &device, &mut data)?;
 
         drawing::command_buffer::create_command_buffers(&device, &mut data)?;
 
@@ -221,8 +222,11 @@ impl App {
         presentation::swapchain::destroy_swapchain(self);
 
         self.device
-            .destroy_buffer(self.data.vertext_data.vertex_buffer, None);
+            .destroy_buffer(self.data.vertext_data.index_buffer, None);
+        self.device
+            .free_memory(self.data.vertext_data.index_buffer_memory, None);
 
+        self.device.destroy_buffer(self.data.vertext_data.vertex_buffer, None);
         self.device
             .free_memory(self.data.vertext_data.vertex_buffer_memory, None);
 
