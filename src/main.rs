@@ -185,7 +185,7 @@ impl App {
             .reset_fences(&[self.data.drawing_data.in_flight_fences[self.frame]])?;
 
         self.device.queue_submit(
-            self.data.setup_data.graphics_queue,
+            self.data.setup_data.transfer_queue,
             &[submit_info],
             self.data.drawing_data.in_flight_fences[self.frame],
         )?;

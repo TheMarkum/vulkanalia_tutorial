@@ -8,6 +8,6 @@ pub mod instance;
 pub struct SetupData {
     pub messenger: DebugUtilsMessengerEXT,
     pub physical_device: vk::PhysicalDevice,
-    pub graphics_queue: vk::Queue,
+    pub transfer_queue: vk::Queue,
     pub present_queue: vk::Queue,
 }

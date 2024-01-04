@@ -101,8 +101,8 @@ pub unsafe fn create_swapchain(
         queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
 
     let mut queue_family_indices = vec![];
-    let image_sharing_mode = if indices.graphics != indices.present {
-        queue_family_indices.push(indices.graphics);
+    let image_sharing_mode = if indices.transfer != indices.present {
+        queue_family_indices.push(indices.transfer);
         queue_family_indices.push(indices.present);
         vk::SharingMode::CONCURRENT
     } else {

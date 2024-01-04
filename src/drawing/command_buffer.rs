@@ -15,7 +15,7 @@ pub unsafe fn create_command_pool(
 
     let info = vk::CommandPoolCreateInfo::builder()
         .flags(vk::CommandPoolCreateFlags::empty()) // Optional.
-        .queue_family_index(indices.graphics);
+        .queue_family_index(indices.transfer);
 
     data.drawing_data.command_pool = device.create_command_pool(&info, None)?;
 
