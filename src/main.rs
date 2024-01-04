@@ -9,8 +9,7 @@ use anyhow::{anyhow, Result};
 use vulkanalia::loader::{LibloadingLoader, LIBRARY};
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{
-    ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension,
-    KhrSwapchainExtension,
+    ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension, KhrSwapchainExtension,
 };
 use vulkanalia::{window, Entry, Instance};
 use winit::dpi::LogicalSize;

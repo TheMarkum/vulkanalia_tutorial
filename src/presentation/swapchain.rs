@@ -1,6 +1,4 @@
-use std::mem::size_of_val;
-
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::*;
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{KhrSurfaceExtension, KhrSwapchainExtension};
@@ -81,8 +79,6 @@ pub unsafe fn create_swapchain(
     device: &Device,
     data: &mut AppData,
 ) -> Result<()> {
-    let indices =
-        queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
     let support = SwapchainSupport::get(instance, data, data.setup_data.physical_device)?;
 
     let surface_format = get_swapchain_surface_format(&support.formats);
@@ -98,6 +94,9 @@ pub unsafe fn create_swapchain(
     {
         image_count = support.capabilities.max_image_count;
     }
+
+    let indices =
+        queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
 
     let mut queue_family_indices = vec![];
     let image_sharing_mode = if indices.graphics != indices.present {
@@ -128,14 +127,8 @@ pub unsafe fn create_swapchain(
     data.presentation_data.swapchain_images =
         device.get_swapchain_images_khr(data.presentation_data.swapchain)?;
 
-    if size_of_val(&data.presentation_data.swapchain) > 0
-        && size_of_val(&data.presentation_data.swapchain_images) > 0
-    {
-        info!("Swapchain created.");
-        return Ok(());
-    }
-
-    Err(anyhow!("Failed to create swapchain."))
+    info!("Swapchain created.");
+    Ok(())
 }
 
 pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) -> Result<()> {

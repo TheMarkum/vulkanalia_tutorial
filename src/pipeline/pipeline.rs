@@ -1,6 +1,4 @@
-use std::mem::size_of_val;
-
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::*;
 use vulkanalia::bytecode::Bytecode;
 use vulkanalia::prelude::v1_0::*;
@@ -102,14 +100,8 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
     device.destroy_shader_module(vert_shader_module, None);
     device.destroy_shader_module(frag_shader_module, None);
 
-    if size_of_val(&data.pipeline_data.pipeline) > 0
-        && size_of_val(&data.pipeline_data.pipeline_layout) > 0
-    {
-        info!("Pipeline created.");
-        return Ok(());
-    }
-
-    Err(anyhow!("Failed to create pipeline."))
+    info!("Pipeline created.");
+    Ok(())
 }
 
 unsafe fn create_shader_module(device: &Device, bytecode: &[u8]) -> Result<vk::ShaderModule> {
@@ -164,10 +156,6 @@ pub unsafe fn create_render_pass(
 
     data.pipeline_data.render_pass = device.create_render_pass(&info, None)?;
 
-    if size_of_val(&data.pipeline_data.render_pass) > 0 {
-        info!("Render pass created.");
-        return Ok(());
-    }
-
-    Err(anyhow!("Failed to create render pass."))
+    info!("Render pass created.");
+    return Ok(());
 }
