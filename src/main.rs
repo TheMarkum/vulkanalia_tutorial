@@ -22,6 +22,7 @@ mod drawing;
 mod pipeline;
 mod presentation;
 mod setup;
+mod vertex;
 
 const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
 
@@ -49,7 +50,9 @@ fn main() -> Result<()> {
         *control_flow = ControlFlow::Poll;
         match event {
             // Render a frame if our Vulkan app is not being destroyed.
-            Event::MainEventsCleared if !destroying && !minimized => unsafe { app.render(&window) }.unwrap(),
+            Event::MainEventsCleared if !destroying && !minimized => {
+                unsafe { app.render(&window) }.unwrap()
+            }
             // Trigger re-render, if resized.
             Event::WindowEvent {
                 event: WindowEvent::Resized(size),
@@ -116,6 +119,9 @@ impl App {
 
         drawing::frame_buffer::create_framebuffers(&device, &mut data)?;
         drawing::command_buffer::create_command_pool(&instance, &device, &mut data)?;
+
+        vertex::vertex::create_vertex_buffer(&instance, &device, &mut data)?;
+
         drawing::command_buffer::create_command_buffers(&device, &mut data)?;
 
         drawing::render::create_sync_objects(&device, &mut data)?;
@@ -214,6 +220,12 @@ impl App {
     unsafe fn destroy(&mut self) {
         presentation::swapchain::destroy_swapchain(self);
 
+        self.device
+            .destroy_buffer(self.data.vertext_data.vertex_buffer, None);
+
+        self.device
+            .free_memory(self.data.vertext_data.vertex_buffer_memory, None);
+
         self.data
             .drawing_data
             .in_flight_fences
@@ -254,4 +266,5 @@ struct AppData {
     presentation_data: presentation::PresentationData,
     pipeline_data: pipeline::PipelineData,
     drawing_data: drawing::DrawingData,
+    vertext_data: vertex::VertexData,
 }
