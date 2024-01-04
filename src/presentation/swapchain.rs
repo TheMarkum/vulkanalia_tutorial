@@ -102,7 +102,7 @@ pub unsafe fn create_swapchain(
 
     let mut queue_family_indices = vec![];
     let image_sharing_mode =
-        if indices.transfer != indices.graphics || indices.transfer != indices.present {
+        if indices.transfer != indices.present {
             queue_family_indices.push(indices.transfer);
             queue_family_indices.push(indices.graphics);
             queue_family_indices.push(indices.present);

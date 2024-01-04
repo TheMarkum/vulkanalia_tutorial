@@ -13,11 +13,17 @@ pub unsafe fn create_command_pool(
     let indices =
         queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
 
-    let info = vk::CommandPoolCreateInfo::builder()
+    let mut info = vk::CommandPoolCreateInfo::builder()
         .flags(vk::CommandPoolCreateFlags::empty()) // Optional.
-        .queue_family_index(indices.transfer);
+        .queue_family_index(indices.graphics);
 
     data.drawing_data.command_pool = device.create_command_pool(&info, None)?;
+
+    info = vk::CommandPoolCreateInfo::builder()
+        .flags(vk::CommandPoolCreateFlags::TRANSIENT) // Optional.
+        .queue_family_index(indices.transfer);
+
+    data.vertext_data.command_pool = device.create_command_pool(&info, None)?;
 
     Ok(())
 }

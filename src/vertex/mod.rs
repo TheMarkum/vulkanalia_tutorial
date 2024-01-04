@@ -6,4 +6,5 @@ pub mod vertex;
 pub struct VertexData {
     pub vertex_buffer: vk::Buffer,
     pub vertex_buffer_memory: vk::DeviceMemory,
+    pub command_pool: vk::CommandPool,
 }

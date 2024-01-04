@@ -140,7 +140,7 @@ unsafe fn copy_buffer(
 ) -> Result<()> {
     let info = vk::CommandBufferAllocateInfo::builder()
         .level(vk::CommandBufferLevel::PRIMARY)
-        .command_pool(data.drawing_data.command_pool)
+        .command_pool(data.vertext_data.command_pool)
         .command_buffer_count(1);
 
     let command_buffer = device.allocate_command_buffers(&info)?[0];
@@ -155,7 +155,13 @@ unsafe fn copy_buffer(
 
     device.end_command_buffer(command_buffer)?;
 
-    device.free_command_buffers(data.drawing_data.command_pool, &[command_buffer]);
+    let command_buffers = &[command_buffer];
+    let info = vk::SubmitInfo::builder().command_buffers(command_buffers);
+
+    device.queue_submit(data.setup_data.transfer_queue, &[info], vk::Fence::null())?;
+    device.queue_wait_idle(data.setup_data.transfer_queue)?;
+
+    device.free_command_buffers(data.vertext_data.command_pool, &[command_buffer]);
 
     Ok(())
 }
