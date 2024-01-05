@@ -7,6 +7,7 @@ use winit::window::Window;
 use crate::drawing::{command_buffer, frame_buffer};
 use crate::pipeline::pipeline;
 use crate::setup::device::queue_families;
+use crate::uniform::descriptor;
 use crate::{App, AppData};
 
 pub const DEVICE_EXTENSIONS: &[vk::ExtensionName] = &[vk::KHR_SWAPCHAIN_EXTENSION.name];
@@ -101,15 +102,14 @@ pub unsafe fn create_swapchain(
         queue_families::QueueFamilyIndices::get(instance, data, data.setup_data.physical_device)?;
 
     let mut queue_family_indices = vec![];
-    let image_sharing_mode =
-        if indices.transfer != indices.present {
-            queue_family_indices.push(indices.transfer);
-            queue_family_indices.push(indices.graphics);
-            queue_family_indices.push(indices.present);
-            vk::SharingMode::CONCURRENT
-        } else {
-            vk::SharingMode::EXCLUSIVE
-        };
+    let image_sharing_mode = if indices.transfer != indices.present {
+        queue_family_indices.push(indices.transfer);
+        queue_family_indices.push(indices.graphics);
+        queue_family_indices.push(indices.present);
+        vk::SharingMode::CONCURRENT
+    } else {
+        vk::SharingMode::EXCLUSIVE
+    };
 
     let info = vk::SwapchainCreateInfoKHR::builder()
         .surface(data.surface)
@@ -179,6 +179,11 @@ pub unsafe fn recreate_swapchain(app: &mut App, window: &Window) -> Result<()> {
     pipeline::create_pipeline(&app.device, &mut app.data)?;
 
     frame_buffer::create_framebuffers(&app.device, &mut app.data)?;
+
+    descriptor::create_uniform_buffers(&app.instance, &app.device, &mut app.data)?;
+    descriptor::create_descriptor_pool(&app.device, &mut app.data)?;
+    descriptor::create_descriptor_sets(&app.device, &mut app.data)?;
+
     command_buffer::create_command_buffers(&app.device, &mut app.data)?;
 
     app.data.drawing_data.images_in_flight.resize(
@@ -191,6 +196,20 @@ pub unsafe fn recreate_swapchain(app: &mut App, window: &Window) -> Result<()> {
 }
 
 pub unsafe fn destroy_swapchain(app: &mut App) {
+    app.device
+        .destroy_descriptor_pool(app.data.uniform_data.descriptor_pool, None);
+
+    app.data
+        .uniform_data
+        .uniform_buffers
+        .iter()
+        .for_each(|b| app.device.destroy_buffer(*b, None));
+    app.data
+        .uniform_data
+        .uniform_buffers_memory
+        .iter()
+        .for_each(|m| app.device.free_memory(*m, None));
+
     app.data
         .drawing_data
         .framebuffers

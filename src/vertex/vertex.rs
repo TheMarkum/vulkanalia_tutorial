@@ -59,7 +59,7 @@ impl Vertex {
     }
 }
 
-unsafe fn create_buffer(
+pub unsafe fn create_buffer(
     instance: &Instance,
     device: &Device,
     data: &AppData,

@@ -90,6 +90,15 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
             vk::IndexType::UINT16,
         );
 
+        device.cmd_bind_descriptor_sets(
+            *command_buffer,
+            vk::PipelineBindPoint::GRAPHICS,
+            data.pipeline_data.pipeline_layout,
+            0,
+            &[data.uniform_data.descriptor_sets[i]],
+            &[],
+        );
+
         device.cmd_draw_indexed(*command_buffer, vertex::INDICES.len() as u32, 1, 0, 0, 0);
 
         device.cmd_end_render_pass(*command_buffer);

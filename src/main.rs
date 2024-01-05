@@ -5,8 +5,11 @@
     clippy::unnecessary_wraps
 )]
 
+use std::time::Instant;
+
 use anyhow::{anyhow, Result};
 use log::*;
+use uniform::descriptor;
 use vulkanalia::loader::{LibloadingLoader, LIBRARY};
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::vk::{
@@ -22,6 +25,7 @@ mod drawing;
 mod pipeline;
 mod presentation;
 mod setup;
+mod uniform;
 mod vertex;
 
 const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
@@ -95,6 +99,7 @@ struct App {
     device: Device,
     frame: usize,
     resized: bool,
+    start: Instant,
 }
 
 impl App {
@@ -115,6 +120,9 @@ impl App {
         presentation::swapchain::create_swapchain_image_views(&device, &mut data)?;
 
         pipeline::pipeline::create_render_pass(&instance, &device, &mut data)?;
+
+        uniform::descriptor::create_descriptor_set_layout(&device, &mut data)?;
+
         pipeline::pipeline::create_pipeline(&device, &mut data)?;
 
         drawing::frame_buffer::create_framebuffers(&device, &mut data)?;
@@ -122,6 +130,10 @@ impl App {
 
         vertex::vertex::create_vertex_buffer(&instance, &device, &mut data)?;
         vertex::vertex::create_index_buffer(&instance, &device, &mut data)?;
+
+        uniform::descriptor::create_uniform_buffers(&instance, &device, &mut data)?;
+        uniform::descriptor::create_descriptor_pool(&device, &mut data)?;
+        uniform::descriptor::create_descriptor_sets(&device, &mut data)?;
 
         drawing::command_buffer::create_command_buffers(&device, &mut data)?;
 
@@ -134,6 +146,7 @@ impl App {
             device,
             frame: 0,
             resized: false,
+            start: Instant::now(),
         })
     }
 
@@ -144,7 +157,6 @@ impl App {
             true,
             u64::MAX,
         )?;
-
         self.device
             .reset_fences(&[self.data.drawing_data.in_flight_fences[self.frame]])?;
 
@@ -168,6 +180,8 @@ impl App {
 
         self.data.drawing_data.images_in_flight[image_index as usize] =
             self.data.drawing_data.in_flight_fences[self.frame];
+
+        descriptor::update_uniform_buffer(self, image_index)?;
 
         let wait_semaphores = &[self.data.drawing_data.image_available_semaphores[self.frame]];
 
@@ -222,11 +236,15 @@ impl App {
         presentation::swapchain::destroy_swapchain(self);
 
         self.device
+            .destroy_descriptor_set_layout(self.data.uniform_data.descriptor_set_layout, None);
+
+        self.device
             .destroy_buffer(self.data.vertext_data.index_buffer, None);
         self.device
             .free_memory(self.data.vertext_data.index_buffer_memory, None);
 
-        self.device.destroy_buffer(self.data.vertext_data.vertex_buffer, None);
+        self.device
+            .destroy_buffer(self.data.vertext_data.vertex_buffer, None);
         self.device
             .free_memory(self.data.vertext_data.vertex_buffer_memory, None);
 
@@ -268,6 +286,7 @@ struct AppData {
     surface: vk::SurfaceKHR,
     setup_data: setup::SetupData,
     presentation_data: presentation::PresentationData,
+    uniform_data: uniform::UniformData,
     pipeline_data: pipeline::PipelineData,
     drawing_data: drawing::DrawingData,
     vertext_data: vertex::VertexData,
