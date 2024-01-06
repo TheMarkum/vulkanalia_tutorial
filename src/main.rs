@@ -25,6 +25,7 @@ mod drawing;
 mod pipeline;
 mod presentation;
 mod setup;
+mod texture;
 mod uniform;
 mod vertex;
 
