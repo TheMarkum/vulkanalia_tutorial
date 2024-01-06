@@ -31,9 +31,6 @@ pub unsafe fn create_descriptor_set_layout(device: &Device, data: &mut AppData) 
 
     data.uniform_data.descriptor_set_layout = device.create_descriptor_set_layout(&info, None)?;
 
-    let set_layouts = &[data.uniform_data.descriptor_set_layout];
-    let layout_info = vk::PipelineLayoutCreateInfo::builder().set_layouts(set_layouts);
-
     Ok(())
 }
 

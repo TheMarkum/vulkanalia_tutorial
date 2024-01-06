@@ -77,12 +77,6 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
             &[0],
         );
 
-        device.cmd_bind_vertex_buffers(
-            *command_buffer,
-            0,
-            &[data.vertext_data.vertex_buffer],
-            &[0],
-        );
         device.cmd_bind_index_buffer(
             *command_buffer,
             data.vertext_data.index_buffer,
