@@ -16,7 +16,6 @@ use vulkanalia::vk::{
     ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension, KhrSwapchainExtension,
 };
 use vulkanalia::{window, Entry, Instance};
-use winit::dpi::LogicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Vulkan Tutorial (Rust)")
-        .with_inner_size(LogicalSize::new(1024, 768))
+        .with_resizable(true)
         .build(&event_loop)?;
 
     // App
@@ -128,6 +127,10 @@ impl App {
 
         drawing::frame_buffer::create_framebuffers(&device, &mut data)?;
         drawing::command_buffer::create_command_pool(&instance, &device, &mut data)?;
+
+        texture::image::create_texture_image(&instance, &device, &mut data)?;
+        texture::image::create_texture_image_view(&device, &mut data)?;
+        texture::image::create_texture_sampler(&device, &mut data)?;
 
         vertex::vertex::create_vertex_buffer(&instance, &device, &mut data)?;
         vertex::vertex::create_index_buffer(&instance, &device, &mut data)?;
@@ -237,17 +240,28 @@ impl App {
         presentation::swapchain::destroy_swapchain(self);
 
         self.device
+            .destroy_sampler(self.data.texture_data.texture_sampler, None);
+
+        self.device
+            .destroy_image_view(self.data.texture_data.texture_image_view, None);
+
+        self.device
+            .destroy_image(self.data.texture_data.texture_image, None);
+        self.device
+            .free_memory(self.data.texture_data.texture_image_memory, None);
+
+        self.device
             .destroy_descriptor_set_layout(self.data.uniform_data.descriptor_set_layout, None);
 
         self.device
-            .destroy_buffer(self.data.vertext_data.index_buffer, None);
+            .destroy_buffer(self.data.vertex_data.index_buffer, None);
         self.device
-            .free_memory(self.data.vertext_data.index_buffer_memory, None);
+            .free_memory(self.data.vertex_data.index_buffer_memory, None);
 
         self.device
-            .destroy_buffer(self.data.vertext_data.vertex_buffer, None);
+            .destroy_buffer(self.data.vertex_data.vertex_buffer, None);
         self.device
-            .free_memory(self.data.vertext_data.vertex_buffer_memory, None);
+            .free_memory(self.data.vertex_data.vertex_buffer_memory, None);
 
         self.data
             .drawing_data
@@ -290,5 +304,61 @@ struct AppData {
     uniform_data: uniform::UniformData,
     pipeline_data: pipeline::PipelineData,
     drawing_data: drawing::DrawingData,
-    vertext_data: vertex::VertexData,
+    vertex_data: vertex::VertexData,
+    texture_data: texture::TextureData,
+}
+
+unsafe fn begin_single_time_commands(device: &Device, data: &AppData) -> Result<vk::CommandBuffer> {
+    let info = vk::CommandBufferAllocateInfo::builder()
+        .level(vk::CommandBufferLevel::PRIMARY)
+        .command_pool(data.vertex_data.command_pool)
+        .command_buffer_count(1);
+
+    let command_buffer = device.allocate_command_buffers(&info)?[0];
+
+    let info =
+        vk::CommandBufferBeginInfo::builder().flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+
+    device.begin_command_buffer(command_buffer, &info)?;
+
+    Ok(command_buffer)
+}
+
+unsafe fn end_single_time_commands(
+    device: &Device,
+    data: &AppData,
+    command_buffer: vk::CommandBuffer,
+) -> Result<()> {
+    device.end_command_buffer(command_buffer)?;
+
+    let command_buffers = &[command_buffer];
+    let info = vk::SubmitInfo::builder().command_buffers(command_buffers);
+
+    device.queue_submit(data.setup_data.transfer_queue, &[info], vk::Fence::null())?;
+    device.queue_wait_idle(data.setup_data.transfer_queue)?;
+
+    device.free_command_buffers(data.vertex_data.command_pool, &[command_buffer]);
+
+    Ok(())
+}
+
+unsafe fn create_image_view(
+    device: &Device,
+    image: vk::Image,
+    format: vk::Format,
+) -> Result<vk::ImageView> {
+    let subresource_range = vk::ImageSubresourceRange::builder()
+        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .base_mip_level(0)
+        .level_count(1)
+        .base_array_layer(0)
+        .layer_count(1);
+
+    let info = vk::ImageViewCreateInfo::builder()
+        .image(image)
+        .view_type(vk::ImageViewType::_2D)
+        .format(format)
+        .subresource_range(subresource_range);
+
+    Ok(device.create_image_view(&info, None)?)
 }

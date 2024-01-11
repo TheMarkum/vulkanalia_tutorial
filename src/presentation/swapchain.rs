@@ -8,7 +8,7 @@ use crate::drawing::{command_buffer, frame_buffer};
 use crate::pipeline::pipeline;
 use crate::setup::device::queue_families;
 use crate::uniform::descriptor;
-use crate::{App, AppData};
+use crate::{create_image_view, App, AppData};
 
 pub const DEVICE_EXTENSIONS: &[vk::ExtensionName] = &[vk::KHR_SWAPCHAIN_EXTENSION.name];
 
@@ -140,29 +140,7 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
         .presentation_data
         .swapchain_images
         .iter()
-        .map(|i| {
-            let components = vk::ComponentMapping::builder()
-                .r(vk::ComponentSwizzle::IDENTITY)
-                .g(vk::ComponentSwizzle::IDENTITY)
-                .b(vk::ComponentSwizzle::IDENTITY)
-                .a(vk::ComponentSwizzle::IDENTITY);
-
-            let subresource_range = vk::ImageSubresourceRange::builder()
-                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .base_mip_level(0)
-                .level_count(1)
-                .base_array_layer(0)
-                .layer_count(1);
-
-            let info = vk::ImageViewCreateInfo::builder()
-                .image(*i)
-                .view_type(vk::ImageViewType::_2D)
-                .format(data.presentation_data.swapchain_format)
-                .components(components)
-                .subresource_range(subresource_range);
-
-            device.create_image_view(&info, None)
-        })
+        .map(|i| create_image_view(device, *i, data.presentation_data.swapchain_format))
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(())

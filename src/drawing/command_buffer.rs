@@ -23,7 +23,7 @@ pub unsafe fn create_command_pool(
         .flags(vk::CommandPoolCreateFlags::TRANSIENT) // Optional.
         .queue_family_index(indices.transfer);
 
-    data.vertext_data.command_pool = device.create_command_pool(&info, None)?;
+    data.vertex_data.command_pool = device.create_command_pool(&info, None)?;
 
     Ok(())
 }
@@ -73,13 +73,13 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
         device.cmd_bind_vertex_buffers(
             *command_buffer,
             0,
-            &[data.vertext_data.vertex_buffer],
+            &[data.vertex_data.vertex_buffer],
             &[0],
         );
 
         device.cmd_bind_index_buffer(
             *command_buffer,
-            data.vertext_data.index_buffer,
+            data.vertex_data.index_buffer,
             0,
             vk::IndexType::UINT16,
         );

@@ -6,16 +6,16 @@ use cgmath::{vec2, vec3};
 use vulkanalia::prelude::v1_0::*;
 
 use crate::setup::device;
-use crate::AppData;
+use crate::{begin_single_time_commands, end_single_time_commands, AppData};
 
 type Vec2 = cgmath::Vector2<f32>;
 type Vec3 = cgmath::Vector3<f32>;
 
 pub static VERTICES: [Vertex; 4] = [
-    Vertex::new(vec2(-0.5, -0.5), vec3(1.0, 0.0, 0.0)),
-    Vertex::new(vec2(0.5, -0.5), vec3(0.0, 1.0, 0.0)),
-    Vertex::new(vec2(0.5, 0.5), vec3(0.0, 0.0, 1.0)),
-    Vertex::new(vec2(-0.5, 0.5), vec3(1.0, 1.0, 1.0)),
+    Vertex::new(vec2(-0.5, -0.5), vec3(1.0, 0.0, 0.0), vec2(1.0, 0.0)),
+    Vertex::new(vec2(0.5, -0.5), vec3(0.0, 1.0, 0.0), vec2(0.0, 0.0)),
+    Vertex::new(vec2(0.5, 0.5), vec3(0.0, 0.0, 1.0), vec2(0.0, 1.0)),
+    Vertex::new(vec2(-0.5, 0.5), vec3(1.0, 1.0, 1.0), vec2(1.0, 1.0)),
 ];
 
 pub const INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
@@ -25,11 +25,16 @@ pub const INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
 pub struct Vertex {
     pub pos: Vec2,
     pub color: Vec3,
+    pub tex_coord: Vec2,
 }
 
 impl Vertex {
-    const fn new(pos: Vec2, color: Vec3) -> Self {
-        Self { pos, color }
+    const fn new(pos: Vec2, color: Vec3, tex_coord: Vec2) -> Self {
+        Self {
+            pos,
+            color,
+            tex_coord,
+        }
     }
 
     pub fn binding_description() -> vk::VertexInputBindingDescription {
@@ -40,22 +45,26 @@ impl Vertex {
             .build()
     }
 
-    pub fn attribute_descriptions() -> [vk::VertexInputAttributeDescription; 2] {
+    pub fn attribute_descriptions() -> [vk::VertexInputAttributeDescription; 3] {
         let pos = vk::VertexInputAttributeDescription::builder()
             .binding(0)
             .location(0)
             .format(vk::Format::R32G32_SFLOAT)
             .offset(0)
             .build();
-
         let color = vk::VertexInputAttributeDescription::builder()
             .binding(0)
             .location(1)
             .format(vk::Format::R32G32B32_SFLOAT)
             .offset(size_of::<Vec2>() as u32)
             .build();
-
-        [pos, color]
+        let tex_coord = vk::VertexInputAttributeDescription::builder()
+            .binding(0)
+            .location(2)
+            .format(vk::Format::R32G32_SFLOAT)
+            .offset((size_of::<Vec2>() + size_of::<Vec3>()) as u32)
+            .build();
+        [pos, color, tex_coord]
     }
 }
 
@@ -123,8 +132,8 @@ pub unsafe fn create_vertex_buffer(
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )?;
 
-    data.vertext_data.vertex_buffer = vertex_buffer;
-    data.vertext_data.vertex_buffer_memory = vertex_buffer_memory;
+    data.vertex_data.vertex_buffer = vertex_buffer;
+    data.vertex_data.vertex_buffer_memory = vertex_buffer_memory;
 
     copy_buffer(device, data, staging_buffer, vertex_buffer, size)?;
 
@@ -165,8 +174,8 @@ pub unsafe fn create_index_buffer(
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )?;
 
-    data.vertext_data.index_buffer = index_buffer;
-    data.vertext_data.index_buffer_memory = index_buffer_memory;
+    data.vertex_data.index_buffer = index_buffer;
+    data.vertex_data.index_buffer_memory = index_buffer_memory;
 
     copy_buffer(device, data, staging_buffer, index_buffer, size)?;
 
@@ -183,30 +192,12 @@ unsafe fn copy_buffer(
     destination: vk::Buffer,
     size: vk::DeviceSize,
 ) -> Result<()> {
-    let info = vk::CommandBufferAllocateInfo::builder()
-        .level(vk::CommandBufferLevel::PRIMARY)
-        .command_pool(data.vertext_data.command_pool)
-        .command_buffer_count(1);
-
-    let command_buffer = device.allocate_command_buffers(&info)?[0];
-
-    let info =
-        vk::CommandBufferBeginInfo::builder().flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-
-    device.begin_command_buffer(command_buffer, &info)?;
+    let command_buffer = begin_single_time_commands(device, data)?;
 
     let regions = vk::BufferCopy::builder().size(size);
     device.cmd_copy_buffer(command_buffer, source, destination, &[regions]);
 
-    device.end_command_buffer(command_buffer)?;
-
-    let command_buffers = &[command_buffer];
-    let info = vk::SubmitInfo::builder().command_buffers(command_buffers);
-
-    device.queue_submit(data.setup_data.transfer_queue, &[info], vk::Fence::null())?;
-    device.queue_wait_idle(data.setup_data.transfer_queue)?;
-
-    device.free_command_buffers(data.vertext_data.command_pool, &[command_buffer]);
+    end_single_time_commands(device, data, command_buffer)?;
 
     Ok(())
 }
