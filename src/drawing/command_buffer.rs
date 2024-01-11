@@ -2,7 +2,6 @@ use anyhow::Result;
 use vulkanalia::prelude::v1_0::*;
 
 use crate::setup::device::queue_families;
-use crate::vertex::vertex;
 use crate::AppData;
 
 pub unsafe fn create_command_pool(
@@ -55,7 +54,14 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
             },
         };
 
-        let clear_values = &[color_clear_value];
+        let depth_clear_value = vk::ClearValue {
+            depth_stencil: vk::ClearDepthStencilValue {
+                depth: 1.0,
+                stencil: 0,
+            },
+        };
+
+        let clear_values = &[color_clear_value, depth_clear_value];
         let info = vk::RenderPassBeginInfo::builder()
             .render_pass(data.pipeline_data.render_pass)
             .framebuffer(data.drawing_data.framebuffers[i])
@@ -70,18 +76,12 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
             data.pipeline_data.pipeline,
         );
 
-        device.cmd_bind_vertex_buffers(
-            *command_buffer,
-            0,
-            &[data.vertex_data.vertex_buffer],
-            &[0],
-        );
-
+        device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_data.vertex_buffer], &[0]);
         device.cmd_bind_index_buffer(
             *command_buffer,
             data.vertex_data.index_buffer,
             0,
-            vk::IndexType::UINT16,
+            vk::IndexType::UINT32,
         );
 
         device.cmd_bind_descriptor_sets(
@@ -93,7 +93,14 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
             &[],
         );
 
-        device.cmd_draw_indexed(*command_buffer, vertex::INDICES.len() as u32, 1, 0, 0, 0);
+        device.cmd_draw_indexed(
+            *command_buffer,
+            data.vertex_data.indices.len() as u32,
+            1,
+            0,
+            0,
+            0,
+        );
 
         device.cmd_end_render_pass(*command_buffer);
         device.end_command_buffer(*command_buffer)?;

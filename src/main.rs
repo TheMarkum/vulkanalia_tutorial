@@ -16,11 +16,13 @@ use vulkanalia::vk::{
     ExtDebugUtilsExtension, InstanceV1_0, KhrSurfaceExtension, KhrSwapchainExtension,
 };
 use vulkanalia::{window, Entry, Instance};
+use winit::dpi::LogicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
 mod drawing;
+mod model;
 mod pipeline;
 mod presentation;
 mod setup;
@@ -41,7 +43,7 @@ fn main() -> Result<()> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Vulkan Tutorial (Rust)")
-        .with_resizable(true)
+        .with_inner_size(LogicalSize::new(1024, 768))
         .build(&event_loop)?;
 
     // App
@@ -125,12 +127,17 @@ impl App {
 
         pipeline::pipeline::create_pipeline(&device, &mut data)?;
 
-        drawing::frame_buffer::create_framebuffers(&device, &mut data)?;
         drawing::command_buffer::create_command_pool(&instance, &device, &mut data)?;
+
+        texture::image::create_depth_objects(&instance, &device, &mut data)?;
+
+        drawing::frame_buffer::create_framebuffers(&device, &mut data)?;
 
         texture::image::create_texture_image(&instance, &device, &mut data)?;
         texture::image::create_texture_image_view(&device, &mut data)?;
         texture::image::create_texture_sampler(&device, &mut data)?;
+
+        model::model::load_model(&mut data)?;
 
         vertex::vertex::create_vertex_buffer(&instance, &device, &mut data)?;
         vertex::vertex::create_index_buffer(&instance, &device, &mut data)?;
@@ -346,9 +353,10 @@ unsafe fn create_image_view(
     device: &Device,
     image: vk::Image,
     format: vk::Format,
+    aspects: vk::ImageAspectFlags,
 ) -> Result<vk::ImageView> {
     let subresource_range = vk::ImageSubresourceRange::builder()
-        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .aspect_mask(aspects)
         .base_mip_level(0)
         .level_count(1)
         .base_array_layer(0)

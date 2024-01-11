@@ -7,6 +7,7 @@ use winit::window::Window;
 use crate::drawing::{command_buffer, frame_buffer};
 use crate::pipeline::pipeline;
 use crate::setup::device::queue_families;
+use crate::texture::image;
 use crate::uniform::descriptor;
 use crate::{create_image_view, App, AppData};
 
@@ -140,7 +141,14 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
         .presentation_data
         .swapchain_images
         .iter()
-        .map(|i| create_image_view(device, *i, data.presentation_data.swapchain_format))
+        .map(|i| {
+            create_image_view(
+                device,
+                *i,
+                data.presentation_data.swapchain_format,
+                vk::ImageAspectFlags::COLOR,
+            )
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(())
@@ -149,31 +157,29 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
 pub unsafe fn recreate_swapchain(app: &mut App, window: &Window) -> Result<()> {
     app.device.device_wait_idle()?;
     destroy_swapchain(app);
-
     create_swapchain(window, &app.instance, &app.device, &mut app.data)?;
     create_swapchain_image_views(&app.device, &mut app.data)?;
-
     pipeline::create_render_pass(&app.instance, &app.device, &mut app.data)?;
     pipeline::create_pipeline(&app.device, &mut app.data)?;
-
+    image::create_depth_objects(&app.instance, &app.device, &mut app.data)?;
     frame_buffer::create_framebuffers(&app.device, &mut app.data)?;
-
     descriptor::create_uniform_buffers(&app.instance, &app.device, &mut app.data)?;
     descriptor::create_descriptor_pool(&app.device, &mut app.data)?;
     descriptor::create_descriptor_sets(&app.device, &mut app.data)?;
-
     command_buffer::create_command_buffers(&app.device, &mut app.data)?;
-
-    app.data.drawing_data.images_in_flight.resize(
-        app.data.presentation_data.swapchain_images.len(),
-        vk::Fence::null(),
-    );
 
     info!("Swapchain re-created.");
     Ok(())
 }
 
 pub unsafe fn destroy_swapchain(app: &mut App) {
+    app.device
+        .destroy_image_view(app.data.texture_data.depth_image_view, None);
+    app.device
+        .free_memory(app.data.texture_data.depth_image_memory, None);
+    app.device
+        .destroy_image(app.data.texture_data.depth_image, None);
+
     app.device
         .destroy_descriptor_pool(app.data.uniform_data.descriptor_pool, None);
 

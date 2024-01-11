@@ -13,7 +13,7 @@ pub unsafe fn create_texture_image(
     device: &Device,
     data: &mut AppData,
 ) -> Result<()> {
-    let image = File::open("src/texture/resources/statue.png")?;
+    let image = File::open("src/texture/resources/viking_room.png")?;
 
     let decoder = png::Decoder::new(image);
     let mut reader = decoder.read_info()?;
@@ -23,6 +23,10 @@ pub unsafe fn create_texture_image(
 
     let size = reader.info().raw_bytes() as u64;
     let (width, height) = reader.info().size();
+
+    if width != 1024 || height != 1024 || reader.info().color_type != png::ColorType::Rgba {
+        panic!("Invalid texture image.");
+    }
 
     let (staging_buffer, staging_buffer_memory) = vertex::create_buffer(
         instance,
@@ -135,6 +139,13 @@ unsafe fn transition_image_layout(
 ) -> Result<()> {
     let (src_access_mask, dst_access_mask, src_stage_mask, dst_stage_mask) =
         match (old_layout, new_layout) {
+            (vk::ImageLayout::UNDEFINED, vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL) => (
+                vk::AccessFlags::empty(),
+                vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
+                    | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+            ),
             (vk::ImageLayout::UNDEFINED, vk::ImageLayout::TRANSFER_DST_OPTIMAL) => (
                 vk::AccessFlags::empty(),
                 vk::AccessFlags::TRANSFER_WRITE,
@@ -152,8 +163,19 @@ unsafe fn transition_image_layout(
 
     let command_buffer = begin_single_time_commands(device, data)?;
 
+    let aspect_mask = if new_layout == vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL {
+        match format {
+            vk::Format::D32_SFLOAT_S8_UINT | vk::Format::D24_UNORM_S8_UINT => {
+                vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL
+            }
+            _ => vk::ImageAspectFlags::DEPTH,
+        }
+    } else {
+        vk::ImageAspectFlags::COLOR
+    };
+
     let subresource = vk::ImageSubresourceRange::builder()
-        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .aspect_mask(aspect_mask)
         .base_mip_level(0)
         .level_count(1)
         .base_array_layer(0)
@@ -230,6 +252,7 @@ pub unsafe fn create_texture_image_view(device: &Device, data: &mut AppData) -> 
         device,
         data.texture_data.texture_image,
         vk::Format::R8G8B8A8_SRGB,
+        vk::ImageAspectFlags::COLOR,
     )?;
 
     Ok(())
@@ -256,4 +279,62 @@ pub unsafe fn create_texture_sampler(device: &Device, data: &mut AppData) -> Res
     data.texture_data.texture_sampler = device.create_sampler(&info, None)?;
 
     Ok(())
+}
+
+pub unsafe fn create_depth_objects(
+    instance: &Instance,
+    device: &Device,
+    data: &mut AppData,
+) -> Result<()> {
+    let format = get_depth_format(instance, data)?;
+
+    let (depth_image, depth_image_memory) = create_image(
+        instance,
+        device,
+        data,
+        data.presentation_data.swapchain_extent.width,
+        data.presentation_data.swapchain_extent.height,
+        format,
+        vk::ImageTiling::OPTIMAL,
+        vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+    )?;
+
+    data.texture_data.depth_image = depth_image;
+    data.texture_data.depth_image_memory = depth_image_memory;
+
+    // Image View
+    data.texture_data.depth_image_view = create_image_view(
+        device,
+        data.texture_data.depth_image,
+        format,
+        vk::ImageAspectFlags::DEPTH,
+    )?;
+
+    transition_image_layout(
+        device,
+        data,
+        data.texture_data.depth_image,
+        format,
+        vk::ImageLayout::UNDEFINED,
+        vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    )?;
+
+    Ok(())
+}
+
+pub unsafe fn get_depth_format(instance: &Instance, data: &AppData) -> Result<vk::Format> {
+    let candidates = &[
+        vk::Format::D32_SFLOAT,
+        vk::Format::D32_SFLOAT_S8_UINT,
+        vk::Format::D24_UNORM_S8_UINT,
+    ];
+
+    device::get_supported_format(
+        instance,
+        data,
+        candidates,
+        vk::ImageTiling::OPTIMAL,
+        vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+    )
 }

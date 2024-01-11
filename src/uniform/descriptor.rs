@@ -78,15 +78,34 @@ pub unsafe fn update_uniform_buffer(app: &App, image_index: usize) -> Result<()>
         vec3(0.0, 0.0, 1.0),
     );
 
-    let mut proj = cgmath::perspective(
-        Deg(45.0),
-        app.data.presentation_data.swapchain_extent.width as f32
-            / app.data.presentation_data.swapchain_extent.height as f32,
-        0.1,
-        10.0,
+    let correction = Mat4::new(
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        // We're also flipping the Y-axis with this line's `-1.0`.
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0 / 2.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0 / 2.0,
+        1.0,
     );
 
-    proj[1][1] *= -1.0;
+    let proj = correction
+        * cgmath::perspective(
+            Deg(45.0),
+            app.data.presentation_data.swapchain_extent.width as f32
+                / app.data.presentation_data.swapchain_extent.height as f32,
+            0.1,
+            10.0,
+        );
 
     let ubo = UniformBufferObject { model, view, proj };
 

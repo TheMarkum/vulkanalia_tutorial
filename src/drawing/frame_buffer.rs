@@ -9,7 +9,7 @@ pub unsafe fn create_framebuffers(device: &Device, data: &mut AppData) -> Result
         .swapchain_image_views
         .iter()
         .map(|i| {
-            let attachments = &[*i];
+            let attachments = &[*i, data.texture_data.depth_image_view];
             let create_info = vk::FramebufferCreateInfo::builder()
                 .render_pass(data.pipeline_data.render_pass)
                 .attachments(attachments)

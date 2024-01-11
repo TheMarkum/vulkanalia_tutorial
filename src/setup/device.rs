@@ -146,3 +146,26 @@ pub unsafe fn get_memory_type_index(
         })
         .ok_or_else(|| anyhow!("Failed to find suitable memory type."))
 }
+
+pub unsafe fn get_supported_format(
+    instance: &Instance,
+    data: &AppData,
+    candidates: &[vk::Format],
+    tiling: vk::ImageTiling,
+    features: vk::FormatFeatureFlags,
+) -> Result<vk::Format> {
+    candidates
+        .iter()
+        .cloned()
+        .find(|f| {
+            let properties =
+                instance.get_physical_device_format_properties(data.setup_data.physical_device, *f);
+
+            match tiling {
+                vk::ImageTiling::LINEAR => properties.linear_tiling_features.contains(features),
+                vk::ImageTiling::OPTIMAL => properties.optimal_tiling_features.contains(features),
+                _ => false,
+            }
+        })
+        .ok_or_else(|| anyhow!("Failed to find supported format!"))
+}
