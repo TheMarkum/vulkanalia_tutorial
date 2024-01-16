@@ -10,7 +10,9 @@ use crate::vertex::vertex;
 use crate::AppData;
 
 pub fn load_model(data: &mut AppData) -> Result<()> {
-     let mut reader = BufReader::new(File::open("/home/mhl/vulkanalia_tutorial/src/texture/resources/viking_room.obj")?);
+    // Model
+
+    let mut reader = BufReader::new(File::open("/home/mhl/vulkanalia_tutorial/src/texture/resources/viking_room.obj")?);
 
     let (models, _) = tobj::load_obj_buf(
         &mut reader,
@@ -21,19 +23,10 @@ pub fn load_model(data: &mut AppData) -> Result<()> {
         |_| Ok(Default::default()),
     )?;
 
+    // Vertices / Indices
+
     for model in &models {
         for index in &model.mesh.indices {
-            let vertex = vertex::Vertex {
-                pos: vec3(0.0, 0.0, 0.0),
-                color: vec3(1.0, 1.0, 1.0),
-                tex_coord: vec2(0.0, 0.0),
-            };
-
-            data.vertex_data.vertices.push(vertex);
-            data.vertex_data
-                .indices
-                .push(data.vertex_data.indices.len() as u32);
-
             let pos_offset = (3 * index) as usize;
             let tex_coord_offset = (2 * index) as usize;
 
@@ -49,6 +42,11 @@ pub fn load_model(data: &mut AppData) -> Result<()> {
                     model.mesh.texcoords[tex_coord_offset + 1],
                 ),
             };
+
+            data.vertex_data.vertices.push(vertex);
+            data.vertex_data
+                .indices
+                .push(data.vertex_data.indices.len() as u32);
         }
     }
 
