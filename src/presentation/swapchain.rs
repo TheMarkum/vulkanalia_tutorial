@@ -9,7 +9,7 @@ use crate::pipeline::pipeline;
 use crate::setup::device::queue_families;
 use crate::texture::image;
 use crate::uniform::descriptor;
-use crate::{create_image_view, App, AppData};
+use crate::{App, AppData};
 
 pub const DEVICE_EXTENSIONS: &[vk::ExtensionName] = &[vk::KHR_SWAPCHAIN_EXTENSION.name];
 
@@ -142,11 +142,12 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
         .swapchain_images
         .iter()
         .map(|i| {
-            create_image_view(
+            image::create_image_view(
                 device,
                 *i,
                 data.presentation_data.swapchain_format,
                 vk::ImageAspectFlags::COLOR,
+                1,
             )
         })
         .collect::<Result<Vec<_>, _>>()?;

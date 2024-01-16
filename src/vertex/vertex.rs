@@ -190,12 +190,18 @@ unsafe fn copy_buffer(
     destination: vk::Buffer,
     size: vk::DeviceSize,
 ) -> Result<()> {
-    let command_buffer = begin_single_time_commands(device, data)?;
+    let command_buffer = begin_single_time_commands(device, data, data.vertex_data.command_pool)?;
 
     let regions = vk::BufferCopy::builder().size(size);
     device.cmd_copy_buffer(command_buffer, source, destination, &[regions]);
 
-    end_single_time_commands(device, data, command_buffer)?;
+    end_single_time_commands(
+        device,
+        data,
+        command_buffer,
+        data.vertex_data.command_pool,
+        data.setup_data.transfer_queue,
+    )?;
 
     Ok(())
 }

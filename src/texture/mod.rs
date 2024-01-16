@@ -4,6 +4,7 @@ pub mod image;
 
 #[derive(Clone, Debug, Default)]
 pub struct TextureData {
+    pub mip_levels: u32,
     pub texture_image: vk::Image,
     pub texture_image_memory: vk::DeviceMemory,
     pub texture_image_view: vk::ImageView,

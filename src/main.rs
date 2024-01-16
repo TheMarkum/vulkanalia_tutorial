@@ -312,10 +312,14 @@ struct AppData {
     texture_data: texture::TextureData,
 }
 
-unsafe fn begin_single_time_commands(device: &Device, data: &AppData) -> Result<vk::CommandBuffer> {
+unsafe fn begin_single_time_commands(
+    device: &Device,
+    data: &AppData,
+    command_pool: vk::CommandPool,
+) -> Result<vk::CommandBuffer> {
     let info = vk::CommandBufferAllocateInfo::builder()
         .level(vk::CommandBufferLevel::PRIMARY)
-        .command_pool(data.vertex_data.command_pool)
+        .command_pool(command_pool)
         .command_buffer_count(1);
 
     let command_buffer = device.allocate_command_buffers(&info)?[0];
@@ -332,38 +336,18 @@ unsafe fn end_single_time_commands(
     device: &Device,
     data: &AppData,
     command_buffer: vk::CommandBuffer,
+    command_pool: vk::CommandPool,
+    queue: vk::Queue,
 ) -> Result<()> {
     device.end_command_buffer(command_buffer)?;
 
     let command_buffers = &[command_buffer];
     let info = vk::SubmitInfo::builder().command_buffers(command_buffers);
 
-    device.queue_submit(data.setup_data.transfer_queue, &[info], vk::Fence::null())?;
-    device.queue_wait_idle(data.setup_data.transfer_queue)?;
+    device.queue_submit(queue, &[info], vk::Fence::null())?;
+    device.queue_wait_idle(queue)?;
 
-    device.free_command_buffers(data.vertex_data.command_pool, &[command_buffer]);
+    device.free_command_buffers(command_pool, &[command_buffer]);
 
     Ok(())
-}
-
-unsafe fn create_image_view(
-    device: &Device,
-    image: vk::Image,
-    format: vk::Format,
-    aspects: vk::ImageAspectFlags,
-) -> Result<vk::ImageView> {
-    let subresource_range = vk::ImageSubresourceRange::builder()
-        .aspect_mask(aspects)
-        .base_mip_level(0)
-        .level_count(1)
-        .base_array_layer(0)
-        .layer_count(1);
-
-    let info = vk::ImageViewCreateInfo::builder()
-        .image(image)
-        .view_type(vk::ImageViewType::_2D)
-        .format(format)
-        .subresource_range(subresource_range);
-
-    Ok(device.create_image_view(&info, None)?)
 }
