@@ -147,7 +147,6 @@ impl App {
         uniform::descriptor::create_descriptor_sets(&device, &mut data)?;
 
         drawing::command_buffer::create_command_buffers(&device, &mut data)?;
-
         drawing::render::create_sync_objects(&device, &mut data)?;
 
         Ok(Self {
@@ -168,8 +167,6 @@ impl App {
             true,
             u64::MAX,
         )?;
-        self.device
-            .reset_fences(&[self.data.drawing_data.in_flight_fences[self.frame]])?;
 
         let image_index = self
             .device

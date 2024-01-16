@@ -13,7 +13,7 @@ pub unsafe fn create_texture_image(
     device: &Device,
     data: &mut AppData,
 ) -> Result<()> {
-    let image = File::open("src/texture/resources/viking_room.png")?;
+    let image = File::open("/home/mhl/vulkanalia_tutorial/src/texture/resources/viking_room.png")?;
 
     let decoder = png::Decoder::new(image);
     let mut reader = decoder.read_info()?;

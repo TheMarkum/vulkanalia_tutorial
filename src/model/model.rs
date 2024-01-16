@@ -10,7 +10,7 @@ use crate::vertex::vertex;
 use crate::AppData;
 
 pub fn load_model(data: &mut AppData) -> Result<()> {
-     let mut reader = BufReader::new(File::open("src/texture/resources/viking_room.obj")?);
+     let mut reader = BufReader::new(File::open("/home/mhl/vulkanalia_tutorial/src/texture/resources/viking_room.obj")?);
 
     let (models, _) = tobj::load_obj_buf(
         &mut reader,
