@@ -8,6 +8,7 @@
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
+use camera::Camera;
 use log::*;
 use uniform::descriptor;
 use vulkanalia::loader::{LibloadingLoader, LIBRARY};
@@ -17,10 +18,12 @@ use vulkanalia::vk::{
 };
 use vulkanalia::{window, Entry, Instance};
 use winit::dpi::LogicalSize;
+use winit::event::{DeviceEvent, ElementState, VirtualKeyCode};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
+mod camera;
 mod drawing;
 mod model;
 mod pipeline;
@@ -87,6 +90,35 @@ fn main() -> Result<()> {
                     app.destroy();
                 }
             }
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput { input, .. },
+                ..
+            } => {
+                if input.state == ElementState::Pressed {
+                    match input.virtual_keycode {
+                        Some(VirtualKeyCode::W) => app.data.camera_data.velocity.0.z = -1.0,
+                        Some(VirtualKeyCode::S) => app.data.camera_data.velocity.0.z = 1.0,
+                        Some(VirtualKeyCode::A) => app.data.camera_data.velocity.0.x = -1.0,
+                        Some(VirtualKeyCode::D) => app.data.camera_data.velocity.0.x = 1.0,
+                        _ => {}
+                    }
+                } else if input.state == ElementState::Released {
+                    match input.virtual_keycode {
+                        Some(VirtualKeyCode::W) => app.data.camera_data.velocity.0.z = 0.0,
+                        Some(VirtualKeyCode::S) => app.data.camera_data.velocity.0.z = 0.0,
+                        Some(VirtualKeyCode::A) => app.data.camera_data.velocity.0.x = 0.0,
+                        Some(VirtualKeyCode::D) => app.data.camera_data.velocity.0.x = 0.0,
+                        _ => {}
+                    }
+                }
+            }
+            Event::DeviceEvent {
+                event: DeviceEvent::MouseMotion { delta: (x, y) },
+                ..
+            } => {
+                app.data.camera_data.yaw += x as f32 / 200.0;
+                app.data.camera_data.pitch -= y as f32 / 200.0;
+            }
             _ => {}
         }
     });
@@ -102,6 +134,7 @@ struct App {
     frame: usize,
     resized: bool,
     start: Instant,
+    camera: Camera,
 }
 
 impl App {
@@ -150,6 +183,13 @@ impl App {
         drawing::command_buffer::create_command_buffers(&device, &mut data)?;
         drawing::render::create_sync_objects(&device, &mut data)?;
 
+        let camera = Camera::new(
+            camera::Vec3::new(0.0, 0.0, 0.0),
+            camera::Vec3::new(0.0, 0.0, 0.5),
+            0.0,
+            0.0,
+        );
+
         Ok(Self {
             entry,
             instance,
@@ -158,6 +198,7 @@ impl App {
             frame: 0,
             resized: false,
             start: Instant::now(),
+            camera,
         })
     }
 
@@ -311,6 +352,7 @@ struct AppData {
     drawing_data: drawing::DrawingData,
     vertex_data: vertex::VertexData,
     texture_data: texture::TextureData,
+    camera_data: camera::Camera,
 }
 
 unsafe fn begin_single_time_commands(

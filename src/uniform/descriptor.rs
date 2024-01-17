@@ -2,7 +2,7 @@ use std::mem::size_of;
 use std::ptr::copy_nonoverlapping as memcpy;
 
 use anyhow::Result;
-use cgmath::{point3, vec3, Deg};
+use cgmath::{vec3, Deg};
 use vulkanalia::prelude::v1_0::*;
 
 use crate::vertex::vertex;
@@ -68,15 +68,17 @@ pub unsafe fn create_uniform_buffers(
 }
 
 pub unsafe fn update_uniform_buffer(app: &App, image_index: usize) -> Result<()> {
-    let time = app.start.elapsed().as_secs_f32();
+    let model = Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), Deg(0.0));
 
-    let model = Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), Deg(90.0) * time);
+    app.camera.update(app.data.camera_data.position.0)?;
 
-    let view = Mat4::look_at_rh(
-        point3(2.0, 2.0, 2.0),
-        point3(0.0, 0.0, 0.0),
-        vec3(0.0, 0.0, 1.0),
-    );
+    // let view = Mat4::look_at_rh(
+    //     point3(2.0, 0.0, 2.0),
+    //     point3(0.0, 0.0, 0.0),
+    //     vec3(0.0, 0.0, 1.0),
+    // );
+
+    let view = app.camera.get_view_matrix()?;
 
     let correction = Mat4::new(
         1.0,
@@ -100,11 +102,11 @@ pub unsafe fn update_uniform_buffer(app: &App, image_index: usize) -> Result<()>
 
     let proj = correction
         * cgmath::perspective(
-            Deg(45.0),
+            Deg(70.0),
             app.data.presentation_data.swapchain_extent.width as f32
                 / app.data.presentation_data.swapchain_extent.height as f32,
             0.1,
-            10.0,
+            10000.0,
         );
 
     let ubo = UniformBufferObject { model, view, proj };
