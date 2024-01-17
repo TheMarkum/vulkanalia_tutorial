@@ -7,6 +7,7 @@ use vulkanalia::prelude::v1_0::*;
 use vulkanalia::Instance;
 
 use crate::presentation::swapchain::{SwapchainSupport, DEVICE_EXTENSIONS};
+use crate::texture::multisampling;
 use crate::{AppData, VALIDATION_ENABLED, VALIDATION_LAYER};
 
 pub mod queue_families;
@@ -27,6 +28,9 @@ pub unsafe fn pick_physical_device(instance: &Instance, data: &mut AppData) -> R
         } else {
             info!("Selected physical device (`{}`).", properties.device_name);
             data.setup_data.physical_device = physical_device;
+
+            data.texture_data.msaa_samples = multisampling::get_max_msaa_samples(instance, data);
+
             return Ok(());
         }
     }
@@ -113,7 +117,9 @@ pub unsafe fn create_logical_device(
         .map(|n| n.as_ptr())
         .collect::<Vec<_>>();
 
-    let features = vk::PhysicalDeviceFeatures::builder().sampler_anisotropy(true);
+    let features = vk::PhysicalDeviceFeatures::builder()
+        .sampler_anisotropy(true)
+        .sample_rate_shading(true); // Enable sample shading feature for the device.
 
     let info = vk::DeviceCreateInfo::builder()
         .queue_create_infos(&queue_infos)

@@ -157,16 +157,24 @@ pub unsafe fn create_swapchain_image_views(device: &Device, data: &mut AppData) 
 
 pub unsafe fn recreate_swapchain(app: &mut App, window: &Window) -> Result<()> {
     app.device.device_wait_idle()?;
+
     destroy_swapchain(app);
     create_swapchain(window, &app.instance, &app.device, &mut app.data)?;
     create_swapchain_image_views(&app.device, &mut app.data)?;
+
     pipeline::create_render_pass(&app.instance, &app.device, &mut app.data)?;
     pipeline::create_pipeline(&app.device, &mut app.data)?;
+
+    image::create_color_objects(&app.instance, &app.device, &mut app.data)?;
+
     image::create_depth_objects(&app.instance, &app.device, &mut app.data)?;
+
     frame_buffer::create_framebuffers(&app.device, &mut app.data)?;
+
     descriptor::create_uniform_buffers(&app.instance, &app.device, &mut app.data)?;
     descriptor::create_descriptor_pool(&app.device, &mut app.data)?;
     descriptor::create_descriptor_sets(&app.device, &mut app.data)?;
+
     command_buffer::create_command_buffers(&app.device, &mut app.data)?;
 
     info!("Swapchain re-created.");
@@ -174,6 +182,13 @@ pub unsafe fn recreate_swapchain(app: &mut App, window: &Window) -> Result<()> {
 }
 
 pub unsafe fn destroy_swapchain(app: &mut App) {
+    app.device
+        .destroy_image_view(app.data.texture_data.color_image_view, None);
+    app.device
+        .free_memory(app.data.texture_data.color_image_memory, None);
+    app.device
+        .destroy_image(app.data.texture_data.color_image, None);
+
     app.device
         .destroy_image_view(app.data.texture_data.depth_image_view, None);
     app.device

@@ -129,6 +129,7 @@ impl App {
 
         drawing::command_buffer::create_command_pool(&instance, &device, &mut data)?;
 
+        texture::image::create_color_objects(&instance, &device, &mut data)?;
         texture::image::create_depth_objects(&instance, &device, &mut data)?;
 
         drawing::frame_buffer::create_framebuffers(&device, &mut data)?;

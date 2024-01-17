@@ -62,8 +62,9 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
         .depth_bias_enable(false);
 
     let multisample_state = vk::PipelineMultisampleStateCreateInfo::builder()
-        .sample_shading_enable(false)
-        .rasterization_samples(vk::SampleCountFlags::_1);
+        .sample_shading_enable(true) // Enable sample shading in the pipeline.
+        .min_sample_shading(0.2) // Minimum fraction for sample shading; closer to one is smoother.
+        .rasterization_samples(data.texture_data.msaa_samples);
 
     let attachment = vk::PipelineColorBlendAttachmentState::builder()
         .color_write_mask(vk::ColorComponentFlags::all())
@@ -88,7 +89,7 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
     data.pipeline_data.pipeline_layout = device.create_pipeline_layout(&layout_info, None)?;
 
     let stages = &[vert_stage, frag_stage];
-   
+
     let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder()
         .depth_test_enable(true)
         .depth_write_enable(true)
@@ -139,13 +140,13 @@ pub unsafe fn create_render_pass(
 ) -> Result<()> {
     let color_attachment = vk::AttachmentDescription::builder()
         .format(data.presentation_data.swapchain_format)
-        .samples(vk::SampleCountFlags::_1)
+        .samples(data.texture_data.msaa_samples)
         .load_op(vk::AttachmentLoadOp::CLEAR)
         .store_op(vk::AttachmentStoreOp::STORE)
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
         .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
         .initial_layout(vk::ImageLayout::UNDEFINED)
-        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR);
+        .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 
     let color_attachment_ref = vk::AttachmentReference::builder()
         .attachment(0)
@@ -153,9 +154,25 @@ pub unsafe fn create_render_pass(
 
     let color_attachments = &[color_attachment_ref];
 
+    let color_resolve_attachment = vk::AttachmentDescription::builder()
+        .format(data.presentation_data.swapchain_format)
+        .samples(vk::SampleCountFlags::_1)
+        .load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR);
+
+    let color_resolve_attachment_ref = vk::AttachmentReference::builder()
+        .attachment(2)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
+    let resolve_attachments = &[color_resolve_attachment_ref];
+
     let depth_stencil_attachment = vk::AttachmentDescription::builder()
         .format(image::get_depth_format(instance, data)?)
-        .samples(vk::SampleCountFlags::_1)
+        .samples(data.texture_data.msaa_samples)
         .load_op(vk::AttachmentLoadOp::CLEAR)
         .store_op(vk::AttachmentStoreOp::DONT_CARE)
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
@@ -170,7 +187,8 @@ pub unsafe fn create_render_pass(
     let subpass = vk::SubpassDescription::builder()
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
         .color_attachments(color_attachments)
-        .depth_stencil_attachment(&depth_stencil_attachment_ref);
+        .depth_stencil_attachment(&depth_stencil_attachment_ref)
+        .resolve_attachments(resolve_attachments);
 
     let dependency = vk::SubpassDependency::builder()
         .src_subpass(vk::SUBPASS_EXTERNAL)
@@ -189,7 +207,11 @@ pub unsafe fn create_render_pass(
                 | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
         );
 
-    let attachments = &[color_attachment, depth_stencil_attachment];
+    let attachments = &[
+        color_attachment,
+        depth_stencil_attachment,
+        color_resolve_attachment,
+    ];
     let subpasses = &[subpass];
     let dependencies = &[dependency];
     let info = vk::RenderPassCreateInfo::builder()
