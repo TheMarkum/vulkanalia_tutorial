@@ -18,8 +18,7 @@ use vulkanalia::vk::{
 };
 use vulkanalia::{window, Entry, Instance};
 use winit::dpi::LogicalSize;
-use winit::event::{DeviceEvent, ElementState, VirtualKeyCode};
-use winit::event::{Event, WindowEvent};
+use winit::event::{DeviceEvent, ElementState, Event, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
@@ -48,6 +47,10 @@ fn main() -> Result<()> {
         .with_title("Vulkan Tutorial (Rust)")
         .with_inner_size(LogicalSize::new(1024, 768))
         .build(&event_loop)?;
+
+    window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(
+        window.primary_monitor(),
+    )));
 
     // App
 
@@ -96,18 +99,18 @@ fn main() -> Result<()> {
             } => {
                 if input.state == ElementState::Pressed {
                     match input.virtual_keycode {
-                        Some(VirtualKeyCode::W) => app.data.camera_data.velocity.0.z = -1.0,
-                        Some(VirtualKeyCode::S) => app.data.camera_data.velocity.0.z = 1.0,
-                        Some(VirtualKeyCode::A) => app.data.camera_data.velocity.0.x = -1.0,
-                        Some(VirtualKeyCode::D) => app.data.camera_data.velocity.0.x = 1.0,
+                        Some(VirtualKeyCode::W) => app.camera.velocity.0.z = -1.0,
+                        Some(VirtualKeyCode::S) => app.camera.velocity.0.z = 1.0,
+                        Some(VirtualKeyCode::A) => app.camera.velocity.0.x = -1.0,
+                        Some(VirtualKeyCode::D) => app.camera.velocity.0.x = 1.0,
                         _ => {}
                     }
                 } else if input.state == ElementState::Released {
                     match input.virtual_keycode {
-                        Some(VirtualKeyCode::W) => app.data.camera_data.velocity.0.z = 0.0,
-                        Some(VirtualKeyCode::S) => app.data.camera_data.velocity.0.z = 0.0,
-                        Some(VirtualKeyCode::A) => app.data.camera_data.velocity.0.x = 0.0,
-                        Some(VirtualKeyCode::D) => app.data.camera_data.velocity.0.x = 0.0,
+                        Some(VirtualKeyCode::W) => app.camera.velocity.0.z = 0.0,
+                        Some(VirtualKeyCode::S) => app.camera.velocity.0.z = 0.0,
+                        Some(VirtualKeyCode::A) => app.camera.velocity.0.x = 0.0,
+                        Some(VirtualKeyCode::D) => app.camera.velocity.0.x = 0.0,
                         _ => {}
                     }
                 }
@@ -116,8 +119,8 @@ fn main() -> Result<()> {
                 event: DeviceEvent::MouseMotion { delta: (x, y) },
                 ..
             } => {
-                app.data.camera_data.yaw += x as f32 / 200.0;
-                app.data.camera_data.pitch -= y as f32 / 200.0;
+                app.camera.yaw += x as f32 / 180.0;
+                app.camera.pitch -= y as f32 / 180.0;
             }
             _ => {}
         }
@@ -352,7 +355,6 @@ struct AppData {
     drawing_data: drawing::DrawingData,
     vertex_data: vertex::VertexData,
     texture_data: texture::TextureData,
-    camera_data: camera::Camera,
 }
 
 unsafe fn begin_single_time_commands(

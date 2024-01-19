@@ -70,15 +70,7 @@ pub unsafe fn create_uniform_buffers(
 pub unsafe fn update_uniform_buffer(app: &App, image_index: usize) -> Result<()> {
     let model = Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), Deg(0.0));
 
-    app.camera.update(app.data.camera_data.position.0)?;
-
-    // let view = Mat4::look_at_rh(
-    //     point3(2.0, 0.0, 2.0),
-    //     point3(0.0, 0.0, 0.0),
-    //     vec3(0.0, 0.0, 1.0),
-    // );
-
-    let view = app.camera.get_view_matrix()?;
+    let view = app.camera.update(app)?;
 
     let correction = Mat4::new(
         1.0,

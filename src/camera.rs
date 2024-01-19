@@ -1,7 +1,9 @@
 use std::default::Default;
 
 use anyhow::{Ok, Result};
-use cgmath::{vec3, vec4, Deg, Matrix4, Transform, Vector3};
+use cgmath::{point3, vec3, Angle, Matrix4, Rad, Vector3};
+
+use crate::App;
 
 type Vec4 = cgmath::Vector4<f32>;
 
@@ -66,7 +68,6 @@ impl Default for Vec3 {
 pub struct Camera {
     pub velocity: Vec3,
     pub position: Vec3,
-    pub rotation: Mat4,
     pub pitch: f32,
     pub yaw: f32,
 }
@@ -76,36 +77,32 @@ impl Camera {
         Self {
             velocity,
             position,
-            rotation: Mat4::default(),
             pitch,
             yaw,
         }
     }
 
-    pub fn update(self, position: Vector3<f32>) -> Result<Vector3<f32>> {
-        let foo = self.velocity.0 * 0.5;
-        let bar = self.rotation.0 * vec4(foo.x, foo.y, foo.z, 0.0);
+    pub fn update(self, app: &App) -> Result<Matrix4<f32>> {
+        let time = app.start.elapsed().as_secs_f32();
 
-        let pos = position + vec3(bar.x, bar.y, bar.z);
+        let radius: f32 = 3.0;
+        let cam_x = Rad::sin(Rad(time)) * radius;
+        let cam_y = Rad::cos(Rad(time)) * radius;
 
-        Ok(pos)
+        let view = Matrix4::look_at_rh(
+            point3(3.0, 0.0, 0.0),
+            point3(0.0, self.yaw, self.pitch),
+            vec3(0.0, 0.0, 1.0),
+        );
+
+        Ok(view)
     }
 
-    pub fn get_rotation_matrix(self) -> Result<Matrix4<f32>> {
-        let pitch_rotation = Matrix4::from_axis_angle(vec3(1.0, 0.0, 0.0), Deg(self.pitch));
-        let yaw_rotation = Matrix4::from_axis_angle(vec3(0.0, -1.0, 0.0), Deg(self.yaw));
-
-        let rotation = pitch_rotation * yaw_rotation;
-
-        Ok(rotation)
+    pub fn get_rotation_matrix(self) -> Result<()> {
+        Ok(())
     }
 
-    pub fn get_view_matrix(self) -> Result<Matrix4<f32>> {
-        let cam_trans = Matrix4::from_translation(self.position.0);
-
-        let view_matrix =
-            Matrix4::inverse_transform(&(cam_trans * self.get_rotation_matrix()?)).unwrap();
-
-        Ok(view_matrix)
+    pub fn get_view_matrix(self) -> Result<()> {
+        Ok(())
     }
 }
